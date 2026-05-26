@@ -3,3 +3,8 @@ pandas
 numpy
 scikit-learn
 joblib
+plotly
+geopy
+folium
+streamlit-folium
+openpyxl
