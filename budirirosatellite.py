@@ -853,57 +853,50 @@ def main_app():
     with st.sidebar:
         st.markdown(f"### 👋 {user_data.get('name', st.session_state.username)}")
         st.markdown(f"Role: {user_data.get('role', 'Clinician')}")
+        st.markdown(f"Department: {st.session_state.user_department}")
         st.markdown(f"Predictions: {user_data.get('predictions_count', 0)}")
         st.markdown("---")
-        st.markdown("### 🎯 Priority Features")
-        st.markdown("1️⃣ Nutritional Assessment")
-        st.markdown("2️⃣ CHW Module")
-        st.markdown("3️⃣ SMS Reminders")
-        st.markdown("4️⃣ Clinical Alerts")
-        st.markdown("5️⃣ Mental Health Screening")
+        st.markdown("### Risk Factors")
+        st.markdown("- Not on ART (+3)")
+        st.markdown("- Weight <50kg (+2)")
+        st.markdown("- CD4 <200 (+2)")
+        st.markdown("- Age 18-24 (+2)")
+        st.markdown("- Male (+1)")
+        st.markdown("- Unemployed (+1)")
         st.markdown("---")
         
-        menu = st.radio("📋 MENU", [
-            "🎯 Predict Risk",
-            "📝 Register Patient",
-            "📋 View Patients",
-            "🗺️ Patient Map",
-            "📊 Analytics",
-            "📥 Reports",
-            "📅 Follow-up",
-            "👨‍⚕️ Performance",
-            "📤 CSV Upload",
-            "📚 Education",
-            "🚨 Alerts Dashboard",
-            "🌍 CHW Module",
-            "📱 Send SMS"
+        menu = st.radio("MENU", [
+            "Predict Risk", "Register Patient", "View Patients",
+            "Patient Map", "Analytics", "Reports",
+            "Follow-up", "Performance", "CSV Upload",
+            "Education", "Alerts Dashboard", "CHW Module", "Send SMS"
         ])
     
-    if menu == "🎯 Predict Risk":
+    if menu == "Predict Risk":
         predict_risk()
-    elif menu == "📝 Register Patient":
+    elif menu == "Register Patient":
         register_patient()
-    elif menu == "📋 View Patients":
+    elif menu == "View Patients":
         view_patients()
-    elif menu == "🗺️ Patient Map":
+    elif menu == "Patient Map":
         patient_location_map()
-    elif menu == "📊 Analytics":
+    elif menu == "Analytics":
         analytics_dashboard()
-    elif menu == "📥 Reports":
+    elif menu == "Reports":
         export_reports()
-    elif menu == "📅 Follow-up":
+    elif menu == "Follow-up":
         follow_up_tracker()
-    elif menu == "👨‍⚕️ Performance":
+    elif menu == "Performance":
         clinician_performance()
-    elif menu == "📤 CSV Upload":
+    elif menu == "CSV Upload":
         upload_csv_patients()
-    elif menu == "📚 Education":
+    elif menu == "Education":
         education_library()
-    elif menu == "🚨 Alerts Dashboard":
+    elif menu == "Alerts Dashboard":
         clinical_alerts_dashboard()
-    elif menu == "🌍 CHW Module":
+    elif menu == "CHW Module":
         chw_module()
-    elif menu == "📱 Send SMS":
+    elif menu == "Send SMS":
         sms_reminder_section()
 
 # ============================================
