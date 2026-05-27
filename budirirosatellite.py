@@ -22,7 +22,7 @@ st.markdown("""
 <style>
     body, .stApp, .main, div, p, span, label {
         font-size: 16px !important;
-        font-weight: 600 !important;
+        font-weight: 500 !important;
     }
     h1 { font-size: 32px !important; font-weight: 800 !important; color: #1a5276 !important; }
     h2 { font-size: 28px !important; font-weight: 700 !important; color: #2e86c1 !important; }
@@ -1014,14 +1014,6 @@ def main_app():
         st.markdown(f"### 👋 {user_data.get('name', st.session_state.username)}")
         st.markdown(f"Role: {user_data.get('role', 'Clinician')}")
         st.markdown(f"Predictions: {user_data.get('predictions_count', 0)}")
-        st.markdown("---")
-        st.markdown("### ⚠️ Risk Factors")
-        st.markdown("- Not on ART (+3)")
-        st.markdown("- Weight <50kg (+2)")
-        st.markdown("- CD4 <200 (+2)")
-        st.markdown("- Age 18-24 (+2)")
-        st.markdown("- Male (+1)")
-        st.markdown("- Unemployed (+1)")
         st.markdown("---")
         st.markdown("### 🎯 Priority Features")
         st.markdown("1️⃣ Nutritional Assessment")
