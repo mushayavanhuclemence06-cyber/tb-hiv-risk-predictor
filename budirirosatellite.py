@@ -13,7 +13,7 @@ from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
 import time
 
-st.set_page_config(page_title="Budiriro TB/HIV Predictor", page_icon="🏥", layout="wide")
+st.set_page_config(page_title="BUDIRIRO TB/HIV PREDICTOR", page_icon="🏥", layout="wide")
 
 # ============================================
 # GLOBAL CSS
@@ -21,12 +21,12 @@ st.set_page_config(page_title="Budiriro TB/HIV Predictor", page_icon="🏥", lay
 st.markdown("""
 <style>
     body, .stApp, .main, div, p, span, label {
-        font-size: 16px !important;
-        font-weight: 500 !important;
+        font-size: 28px !important;
+        font-weight: 700 !important;
     }
-    h1 { font-size: 32px !important; font-weight: 800 !important; color: #1a5276 !important; }
-    h2 { font-size: 28px !important; font-weight: 700 !important; color: #2e86c1 !important; }
-    h3 { font-size: 24px !important; font-weight: 700 !important; }
+    h1 { font-size: 36px !important; font-weight: 800 !important; color: #1a5276 !important; }
+    h2 { font-size: 22px !important; font-weight: 700 !important; color: #2e86c1 !important; }
+    h3 { font-size: 26px !important; font-weight: 700 !important; }
     .stButton button { font-size: 18px !important; font-weight: 700 !important; background-color: #2e86c1 !important; color: white !important; }
     [data-testid="stMetric"] label { font-size: 16px !important; font-weight: 700 !important; }
     [data-testid="stMetric"] value { font-size: 28px !important; font-weight: 800 !important; }
@@ -1001,9 +1001,8 @@ def main_app():
     with col1:
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 1rem; border-radius: 10px; color: white;">
-            <h1 style="color:white;">🏥 Budiriro Satellite Clinic</h1>
+            <h1 style="font-size:12px;"color:white;">🏥 Budiriro Satellite Clinic</h1>
             <p>Welcome, {user_data.get('name', st.session_state.username)} | AUC = 0.706</p>
-            <p style="font-size:12px;">✅ 5 Key Features: Nutrition | Mental Health | SMS | CHW | Alerts</p>
         </div>
         """, unsafe_allow_html=True)
     with col3:
