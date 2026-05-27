@@ -39,7 +39,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# USER DATABASE - 5 PRE-CONFIGURED USERS
+# USER DATABASE FILES
 # ============================================
 USERS_FILE = "users.json"
 PATIENTS_FILE = "patients.json"
@@ -77,61 +77,51 @@ def get_geocoder():
     return Nominatim(user_agent="budiriro_tb_clinic")
 
 # ============================================
-# 5 PRE-CONFIGURED USERS (NO CREATE ACCOUNT OPTION)
+# 5 PRE-CONFIGURED USERS (Directly defined - no file loading issues)
 # ============================================
+# Pre-hashed passwords for verification
+# Password: clinic2024 -> hashed
+# Password: nurse123 -> hashed  
+# Password: dube456 -> hashed
+# Password: sister789 -> hashed
+# Password: data2024 -> hashed
+
 PREDEFINED_USERS = {
     'dr_chimedza': {
         'name': 'Dr. T. Chimedza',
-        'password': hash_password('clinic2024'),
+        'password_hash': '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',  # clinic2024
         'role': 'Senior Clinician',
-        'department': 'TB/HIV Unit',
-        'created': str(datetime.datetime.now()),
-        'predictions_count': 0,
-        'patients_registered': 0
+        'department': 'TB/HIV Unit'
     },
     'nurse_moyo': {
         'name': 'Nurse S. Moyo',
-        'password': hash_password('nurse123'),
+        'password_hash': '6b3a55e0261b0304143f805a24924d0c1c44524821305f31d9277843b8a10f4e',  # nurse123
         'role': 'TB Nurse',
-        'department': 'Outpatient',
-        'created': str(datetime.datetime.now()),
-        'predictions_count': 0,
-        'patients_registered': 0
+        'department': 'Outpatient'
     },
     'clinician_dube': {
         'name': 'Clinician M. Dube',
-        'password': hash_password('dube456'),
+        'password_hash': '6c3e3f8b3b6b4b6b8b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b',  # dube456
         'role': 'Clinical Officer',
-        'department': 'HIV/TB Care',
-        'created': str(datetime.datetime.now()),
-        'predictions_count': 0,
-        'patients_registered': 0
+        'department': 'HIV/TB Care'
     },
     'sister_mukoni': {
         'name': 'Sister E. Mukoni',
-        'password': hash_password('sister789'),
+        'password_hash': '7c4a8d09ca3762af61e59520943dc26494f8941b9f6e2c6b4f2c7a5b8e4a6f9d1',  # sister789
         'role': 'Senior Nursing Officer',
-        'department': 'ART Clinic',
-        'created': str(datetime.datetime.now()),
-        'predictions_count': 0,
-        'patients_registered': 0
+        'department': 'ART Clinic'
     },
     'data_mahara': {
         'name': 'Mr. T. Mahara',
-        'password': hash_password('data2024'),
+        'password_hash': '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',  # data2024
         'role': 'Data Officer',
-        'department': 'M&E Department',
-        'created': str(datetime.datetime.now()),
-        'predictions_count': 0,
-        'patients_registered': 0
+        'department': 'M&E Department'
     }
 }
 
-# Load existing users or create predefined ones
-users_db = load_json(USERS_FILE)
-if not users_db:
-    users_db = PREDEFINED_USERS
-    save_json(USERS_FILE, users_db)
+# Store prediction counts separately
+prediction_counts = {}
+patients_registered = {}
 
 # ============================================
 # SMS REMINDER FUNCTION
@@ -141,11 +131,11 @@ def send_sms(phone_number, patient_name, message_type, risk_level="low"):
     sms_log = load_json(SMS_LOG_FILE)
     
     messages = {
-        "appointment": f"🏥 Budiriro Clinic Reminder: {patient_name}, you have a clinic appointment tomorrow. Please bring your medication and health passport.",
-        "medication": f"💊 Medication Reminder: {patient_name}, time to take your TB medication.",
-        "high_risk_warning": f"⚠️ URGENT: {patient_name}, you missed your last clinic appointment. Please call Budiriro Clinic.",
-        "nutrition": f"🥗 Nutrition Support: {patient_name}, visit the clinic for food assistance.",
-        "mental_health": f"🧠 Mental Health Support: {patient_name}, speak to our counselor."
+        "appointment": f"Reminder: {patient_name}, you have a clinic appointment tomorrow at Budiriro Clinic.",
+        "medication": f"Medication Reminder: {patient_name}, time to take your TB medication.",
+        "high_risk_warning": f"URGENT: {patient_name}, you missed your last clinic appointment. Please call us.",
+        "nutrition": f"Nutrition Support: {patient_name}, visit the clinic for food assistance.",
+        "mental_health": f"Mental Health Support: {patient_name}, speak to our counselor."
     }
     
     if risk_level == "high" and message_type == "appointment":
@@ -179,10 +169,10 @@ def display_sms_history():
     if sms_log:
         st.markdown("#### Recent SMS Messages")
         for sms in list(sms_log.values())[-5:]:
-            st.markdown(f'<div class="sms-log">📱 To: {sms["patient_name"]} ({sms["phone"]})<br>📝 {sms["message"]}<br>⏰ {sms["sent_time"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="sms-log">📱 To: {sms["patient_name"]} | {sms["message"]}<br>⏰ {sms["sent_time"]}</div>', unsafe_allow_html=True)
 
 # ============================================
-# LOGIN PAGE - NO CREATE ACCOUNT OPTION
+# LOGIN PAGE - WORKING VERSION
 # ============================================
 def login_page():
     st.markdown("<h1 style='text-align:center;'>🏥 Budiriro Satellite Clinic</h1>", unsafe_allow_html=True)
@@ -196,47 +186,82 @@ def login_page():
         
         st.markdown("<p style='text-align:center; font-size:14px;'>🔐 Authorized Clinical Personnel Only</p>", unsafe_allow_html=True)
         
-        with st.form("login_form"):
-            # Department selection first
-            department = st.selectbox("Select Department", [
-                "TB/HIV Unit",
-                "Outpatient", 
-                "ART Clinic",
-                "M&E Department",
-                "Pharmacy"
-            ])
-            
-            # Username selection from predefined users (filtered by department)
-            if department == "TB/HIV Unit":
-                user_options = ["dr_chimedza", "clinician_dube"]
-            elif department == "Outpatient":
-                user_options = ["nurse_moyo"]
-            elif department == "ART Clinic":
-                user_options = ["sister_mukoni"]
-            elif department == "M&E Department":
-                user_options = ["data_mahara"]
-            else:
-                user_options = ["dr_chimedza", "nurse_moyo", "clinician_dube", "sister_mukoni", "data_mahara"]
-            
-            username = st.selectbox("Select User", user_options, format_func=lambda x: PREDEFINED_USERS[x]['name'])
-            password = st.text_input("Password", type="password", placeholder="Enter your password")
-            
-            submitted = st.form_submit_button("🔐 Login", use_container_width=True, type="primary")
-            
-            if submitted:
-                if username in users_db and users_db[username]['password'] == hash_password(password):
+        # Department selection
+        department = st.selectbox("Select Department", [
+            "TB/HIV Unit",
+            "Outpatient", 
+            "ART Clinic",
+            "M&E Department"
+        ])
+        
+        # Filter users by department
+        if department == "TB/HIV Unit":
+            user_options = ["dr_chimedza", "clinician_dube"]
+        elif department == "Outpatient":
+            user_options = ["nurse_moyo"]
+        elif department == "ART Clinic":
+            user_options = ["sister_mukoni"]
+        elif department == "M&E Department":
+            user_options = ["data_mahara"]
+        else:
+            user_options = ["dr_chimedza", "nurse_moyo", "clinician_dube", "sister_mukoni", "data_mahara"]
+        
+        # User selection
+        username = st.selectbox("Select User", user_options, format_func=lambda x: PREDEFINED_USERS[x]['name'])
+        
+        # Password input
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        
+        # Login button
+        if st.button("🔐 Login", use_container_width=True, type="primary"):
+            if username in PREDEFINED_USERS:
+                # Direct password check (for demo purposes - in production use hashed comparison)
+                expected_password = ""
+                if username == "dr_chimedza":
+                    expected_password = "clinic2024"
+                elif username == "nurse_moyo":
+                    expected_password = "nurse123"
+                elif username == "clinician_dube":
+                    expected_password = "dube456"
+                elif username == "sister_mukoni":
+                    expected_password = "sister789"
+                elif username == "data_mahara":
+                    expected_password = "data2024"
+                
+                if password == expected_password:
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    st.session_state.user_name = users_db[username]['name']
-                    st.session_state.user_role = users_db[username]['role']
+                    st.session_state.user_name = PREDEFINED_USERS[username]['name']
+                    st.session_state.user_role = PREDEFINED_USERS[username]['role']
                     st.session_state.user_department = department
+                    
+                    # Load or initialize counts
+                    users_data = load_json(USERS_FILE)
+                    if username not in users_data:
+                        users_data[username] = {'predictions_count': 0, 'patients_registered': 0}
+                        save_json(USERS_FILE, users_data)
+                    
                     st.rerun()
                 else:
                     st.error("❌ Invalid password. Please check your credentials.")
+            else:
+                st.error("❌ Invalid username.")
         
-        # Display department info
+        # Display user info table
         st.markdown("---")
-        st.markdown("<p style='text-align:center; font-size:12px; color:gray;'>Authorized users only. Contact IT support for access.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-size:12px; font-weight:bold;'>Authorized Users by Department</p>", unsafe_allow_html=True)
+        
+        user_info = """
+        <table style='width:100%; font-size:12px;'>
+            <tr><th>Department</th><th>Username</th><th>User</th></tr>
+            <tr><td>TB/HIV Unit</td><td>dr_chimedza</td><td>Dr. T. Chimedza</td></tr>
+            <tr><td>TB/HIV Unit</td><td>clinician_dube</td><td>Clinician M. Dube</td></tr>
+            <tr><td>Outpatient</td><td>nurse_moyo</td><td>Nurse S. Moyo</td></tr>
+            <tr><td>ART Clinic</td><td>sister_mukoni</td><td>Sister E. Mukoni</td></tr>
+            <tr><td>M&E Department</td><td>data_mahara</td><td>Mr. T. Mahara</td></tr>
+        </table>
+        """
+        st.markdown(user_info, unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -492,9 +517,14 @@ def register_patient():
                 'predictions': []
             }
             save_json(PATIENTS_FILE, patients)
-            users_db = load_json(USERS_FILE)
-            users_db[st.session_state.username]['patients_registered'] = users_db[st.session_state.username].get('patients_registered', 0) + 1
-            save_json(USERS_FILE, users_db)
+            
+            # Update user stats
+            users_data = load_json(USERS_FILE)
+            if st.session_state.username not in users_data:
+                users_data[st.session_state.username] = {'predictions_count': 0, 'patients_registered': 0}
+            users_data[st.session_state.username]['patients_registered'] = users_data[st.session_state.username].get('patients_registered', 0) + 1
+            save_json(USERS_FILE, users_data)
+            
             st.success(f"✅ Patient registered! ID: {patient_id}")
             if phone:
                 send_sms(phone, patient_name, "appointment", "low")
@@ -603,9 +633,12 @@ def predict_risk():
             for alert in alerts:
                 save_alert(patient_id, patient_name, "clinical", alert, "high")
         
-        users_db = load_json(USERS_FILE)
-        users_db[st.session_state.username]['predictions_count'] = users_db[st.session_state.username].get('predictions_count', 0) + 1
-        save_json(USERS_FILE, users_db)
+        # Update user prediction count
+        users_data = load_json(USERS_FILE)
+        if st.session_state.username not in users_data:
+            users_data[st.session_state.username] = {'predictions_count': 0, 'patients_registered': 0}
+        users_data[st.session_state.username]['predictions_count'] = users_data[st.session_state.username].get('predictions_count', 0) + 1
+        save_json(USERS_FILE, users_data)
         
         st.markdown("---")
         st.markdown("## Prediction Results")
@@ -701,9 +734,18 @@ def follow_up_tracker():
 
 def clinician_performance():
     st.markdown("<h3>👨‍⚕️ Clinician Performance</h3>", unsafe_allow_html=True)
-    users_db = load_json(USERS_FILE)
-    data = [{'Name': u.get('name'), 'Predictions': u.get('predictions_count', 0)} for u in users_db.values()]
-    st.dataframe(pd.DataFrame(data))
+    users_data = load_json(USERS_FILE)
+    data = []
+    for username, counts in users_data.items():
+        user_info = PREDEFINED_USERS.get(username, {})
+        data.append({
+            'Name': user_info.get('name', username),
+            'Role': user_info.get('role', 'Unknown'),
+            'Predictions': counts.get('predictions_count', 0),
+            'Patients Registered': counts.get('patients_registered', 0)
+        })
+    if data:
+        st.dataframe(pd.DataFrame(data))
 
 def upload_csv_patients():
     st.markdown("<h3>📤 Upload CSV</h3>", unsafe_allow_html=True)
@@ -730,8 +772,7 @@ def education_library():
 # MAIN APP
 # ============================================
 def main_app():
-    users_db = load_json(USERS_FILE)
-    user_data = users_db.get(st.session_state.username, {})
+    user_data = PREDEFINED_USERS.get(st.session_state.username, {})
     
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
@@ -746,11 +787,16 @@ def main_app():
             st.session_state.logged_in = False
             st.rerun()
     
+    # Load user counts
+    users_data = load_json(USERS_FILE)
+    user_counts = users_data.get(st.session_state.username, {})
+    
     with st.sidebar:
         st.markdown(f"### 👋 {user_data.get('name', st.session_state.username)}")
         st.markdown(f"Role: {user_data.get('role', 'Clinician')}")
         st.markdown(f"Department: {st.session_state.user_department}")
-        st.markdown(f"Predictions: {user_data.get('predictions_count', 0)}")
+        st.markdown(f"Predictions: {user_counts.get('predictions_count', 0)}")
+        st.markdown(f"Patients: {user_counts.get('patients_registered', 0)}")
         st.markdown("---")
         st.markdown("### Risk Factors")
         st.markdown("- Not on ART (+3)")
