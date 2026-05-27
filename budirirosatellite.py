@@ -21,11 +21,11 @@ st.set_page_config(page_title="BUDIRIRO TB/HIV PREDICTOR", page_icon="🏥", lay
 st.markdown("""
 <style>
     body, .stApp, .main, div, p, span, label {
-        font-size: 26px !important;
-        font-weight: 700 !important;
+        font-size: 20px !important;
+        font-weight: 600 !important;
     }
-    h1 { font-size: 32px !important; font-weight: 500 !important; color: #1a5276 !important; }
-    h2 { font-size: 26px !important; font-weight: 500 !important; color: #2e86c1 !important; }
+    h1 { font-size: 32px !important; font-weight: 800 !important; color: #1a5276 !important; }
+    h2 { font-size: 28px !important; font-weight: 700 !important; color: #2e86c1 !important; }
     h3 { font-size: 24px !important; font-weight: 700 !important; }
     .stButton button { font-size: 18px !important; font-weight: 700 !important; background-color: #2e86c1 !important; color: white !important; }
     [data-testid="stMetric"] label { font-size: 16px !important; font-weight: 700 !important; }
