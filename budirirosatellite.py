@@ -21,7 +21,7 @@ st.set_page_config(page_title="BUDIRIRO TB/HIV PREDICTOR", page_icon="🏥", lay
 st.markdown("""
 <style>
     body, .stApp, .main, div, p, span, label {
-        font-size: 20px !important;
+        font-size: 16px !important;
         font-weight: 600 !important;
     }
     h1 { font-size: 32px !important; font-weight: 800 !important; color: #1a5276 !important; }
