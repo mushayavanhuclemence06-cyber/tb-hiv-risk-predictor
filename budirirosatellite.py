@@ -178,8 +178,6 @@ def login_page():
         if st.button("Create New Account", use_container_width=True):
             st.session_state.page = "register"
             st.rerun()
-        
-        st.info("Demo Login: username = demo , password = demo123")
 
 # ============================================
 # REGISTER PAGE
