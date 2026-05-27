@@ -1001,7 +1001,7 @@ def main_app():
     with col1:
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 1rem; border-radius: 10px; color: white;">
-            <h1 style="font-size:12px;"color:white;">🏥 Budiriro Satellite Clinic</h1>
+            <h1 style="color:white;">🏥 Budiriro Satellite Clinic</h1>
             <p>Welcome, {user_data.get('name', st.session_state.username)} | AUC = 0.706</p>
         </div>
         """, unsafe_allow_html=True)
