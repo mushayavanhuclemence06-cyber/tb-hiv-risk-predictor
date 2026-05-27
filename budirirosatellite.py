@@ -255,12 +255,35 @@ def register_page():
         st.rerun()
 
 # ============================================
+# SAVE ALERT FUNCTION
+# ============================================
+def save_alert(patient_id, patient_name, alert_type, message, priority="high"):
+    alerts = load_json(ALERTS_FILE)
+    alert_id = f"ALT-{len(alerts)+1:04d}"
+    alerts[alert_id] = {
+        'patient_id': patient_id,
+        'patient_name': patient_name,
+        'type': alert_type,
+        'message': message,
+        'priority': priority,
+        'date': str(datetime.datetime.now()),
+        'resolved': False,
+        'clinician': st.session_state.username
+    }
+    save_json(ALERTS_FILE, alerts)
+    
+    if priority == "high":
+        patients = load_json(PATIENTS_FILE)
+        if patient_id in patients and patients[patient_id].get('phone'):
+            send_sms(patients[patient_id]['phone'], patient_name, "appointment", "high")
+
+# ============================================
 # EDIT PATIENT FUNCTION
 # ============================================
 def edit_patient(patient_id, patient_data):
     st.markdown("<h4>✏️ Edit Patient Details</h4>", unsafe_allow_html=True)
     
-    with st.form(key=f"edit_patient_form_{patient_id}"):
+    with st.form(key=f"edit_form_{patient_id}"):
         col1, col2 = st.columns(2)
         with col1:
             new_name = st.text_input("Patient Full Name", value=patient_data['name'], key=f"edit_name_{patient_id}")
@@ -319,29 +342,6 @@ def delete_patient(patient_id, patient_name):
             st.rerun()
 
 # ============================================
-# SAVE ALERT FUNCTION
-# ============================================
-def save_alert(patient_id, patient_name, alert_type, message, priority="high"):
-    alerts = load_json(ALERTS_FILE)
-    alert_id = f"ALT-{len(alerts)+1:04d}"
-    alerts[alert_id] = {
-        'patient_id': patient_id,
-        'patient_name': patient_name,
-        'type': alert_type,
-        'message': message,
-        'priority': priority,
-        'date': str(datetime.datetime.now()),
-        'resolved': False,
-        'clinician': st.session_state.username
-    }
-    save_json(ALERTS_FILE, alerts)
-    
-    if priority == "high":
-        patients = load_json(PATIENTS_FILE)
-        if patient_id in patients and patients[patient_id].get('phone'):
-            send_sms(patients[patient_id]['phone'], patient_name, "appointment", "high")
-
-# ============================================
 # NUTRITIONAL ASSESSMENT
 # ============================================
 def nutritional_assessment(patient_id, patient_name):
@@ -389,7 +389,7 @@ def nutritional_assessment(patient_id, patient_name):
             st.success("✅ Nutritional assessment saved!")
 
 # ============================================
-# MENTAL HEALTH SCREENING (FIXED ALL KEYS)
+# MENTAL HEALTH SCREENING
 # ============================================
 def mental_health_screening(patient_id, patient_name):
     st.markdown("<h4>🧠 Mental Health Screening (PHQ-9)</h4>", unsafe_allow_html=True)
@@ -406,7 +406,7 @@ def mental_health_screening(patient_id, patient_name):
         "Feeling bad about yourself?",
         "Trouble concentrating on things?",
         "Moving or speaking slowly?",
-        "Thoughts that you would be better off dead?"
+        "Thoughts that you would be better off dead or hurting yourself?"
     ]
     
     phq9_scores = []
@@ -431,7 +431,6 @@ def mental_health_screening(patient_id, patient_name):
     else:
         st.success(f"🟢 PHQ-9 Score: {total_phq9} - Minimal depression")
     
-    # FIXED: Added unique key for the button
     if st.button(f"💾 Save Mental Health Assessment", key=f"save_mh_{patient_id}"):
         mental_data[patient_id] = {
             'patient_name': patient_name,
@@ -504,7 +503,7 @@ def chw_module():
         st.success("✅ No high-risk patients requiring immediate home visits")
 
 # ============================================
-# SMS REMINDER SECTION (FIXED ALL KEYS)
+# SMS REMINDER SECTION
 # ============================================
 def sms_reminder_section(patient_id=None, patient_name=None, phone=None):
     st.markdown("<h3>📱 Send SMS Reminder</h3>", unsafe_allow_html=True)
@@ -516,18 +515,26 @@ def sms_reminder_section(patient_id=None, patient_name=None, phone=None):
             manual_phone = st.text_input("Phone Number", key="manual_phone_input")
         with col2:
             message_type = st.selectbox("Message Type", ["appointment", "medication", "nutrition", "mental_health"], key="msg_type_select")
+            risk_level = st.selectbox("Risk Level", ["low", "medium", "high"], key="risk_level_select")
         
         if st.button("Send SMS", use_container_width=True, key="send_sms_manual"):
             if manual_name and manual_phone:
-                send_sms(manual_phone, manual_name, message_type, "low")
+                send_sms(manual_phone, manual_name, message_type, risk_level)
                 st.success(f"SMS sent to {manual_name}")
             else:
                 st.error("Enter both name and phone")
     else:
         if phone:
-            msg_type = st.selectbox("Message Type", ["appointment", "medication", "nutrition", "mental_health"], key=f"msg_type_{patient_id}")
+            st.info(f"Sending SMS to: {patient_name} ({phone})")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                msg_type = st.selectbox("Message Type", ["appointment", "medication", "nutrition", "mental_health"], key=f"msg_type_{patient_id}")
+            with col2:
+                risk = st.selectbox("Risk Level", ["low", "medium", "high"], key=f"risk_{patient_id}")
+            
             if st.button(f"Send SMS to {patient_name}", use_container_width=True, key=f"send_sms_btn_{patient_id}"):
-                send_sms(phone, patient_name, msg_type, "medium")
+                send_sms(phone, patient_name, msg_type, risk)
                 st.success(f"SMS sent to {patient_name}")
     
     st.markdown("---")
@@ -551,13 +558,16 @@ def register_patient():
             tb_type = st.selectbox("TB Type", ["Pulmonary", "Extrapulmonary"], key="reg_tb")
             registration_date = st.date_input("Registration Date", datetime.date.today(), key="reg_date")
         
+        st.markdown("<h4>📍 Location Information</h4>", unsafe_allow_html=True)
         suburb = st.text_input("Suburb/Area", placeholder="e.g., Budiriro, Glen View", key="reg_suburb")
+        street_address = st.text_input("Street Address", placeholder="House number, street name", key="reg_address")
         
         submitted = st.form_submit_button("✅ Register Patient", use_container_width=True)
         
         if submitted and patient_name:
             patients = load_json(PATIENTS_FILE)
             patient_id = f"BUD-{len(patients)+1:04d}"
+            
             patients[patient_id] = {
                 'patient_id': patient_id,
                 'name': patient_name,
@@ -568,13 +578,15 @@ def register_patient():
                 'tb_type': tb_type,
                 'registration_date': str(registration_date),
                 'registered_by': st.session_state.username,
-                'location': {'suburb': suburb},
+                'location': {'suburb': suburb, 'street_address': street_address},
                 'predictions': []
             }
             save_json(PATIENTS_FILE, patients)
+            
             users_db = load_json(USERS_FILE)
             users_db[st.session_state.username]['patients_registered'] = users_db[st.session_state.username].get('patients_registered', 0) + 1
             save_json(USERS_FILE, users_db)
+            
             st.success(f"✅ Patient registered! ID: {patient_id}")
             if phone:
                 send_sms(phone, patient_name, "appointment", "low")
@@ -591,7 +603,7 @@ def predict_risk():
     
     col1, col2 = st.columns([2, 1])
     with col1:
-        patient_option = st.radio("Select Patient", ["New Patient", "Existing Patient"], key="patient_option")
+        patient_option = st.radio("Select Patient", ["New Patient (Quick Predict)", "Existing Patient"], key="patient_option")
     
     patient_id = None
     patient_name = "New Patient"
@@ -609,10 +621,10 @@ def predict_risk():
     with col1:
         age = st.number_input("Age", 18, 120, 30, key="pred_age")
         sex = st.radio("Sex", ["Female", "Male"], horizontal=True, key="pred_sex")
-        employment = st.selectbox("Employment", ["Employed", "Unemployed"], key="pred_employment")
+        employment = st.selectbox("Employment", ["Employed", "Unemployed", "Other"], key="pred_employment")
         weight = st.number_input("Weight (kg)", 25.0, 150.0, 60.0, key="pred_weight")
     with col2:
-        art_status = st.selectbox("ART Status", ["Already on ART", "Not on ART"], key="pred_art")
+        art_status = st.selectbox("ART Status", ["Already on ART", "Not on ART", "Unknown"], key="pred_art")
         cd4 = st.number_input("CD4 Count", 0, 1500, 300, key="pred_cd4")
     
     def calculate_risk():
@@ -622,22 +634,22 @@ def predict_risk():
         
         if art_status == "Not on ART":
             points += 3
-            factors.append("Not on ART (+3)")
-            alerts.append("URGENT: Patient not on ART")
+            factors.append("Not on ART at TB initiation (+3)")
+            alerts.append("URGENT: Patient not on ART - start immediately")
         if weight < 50:
             points += 2
-            factors.append("Underweight (+2)")
-            alerts.append("Severe underweight - refer to nutrition")
+            factors.append("Underweight <50 kg (+2)")
+            alerts.append("CRITICAL: Severe underweight - refer to nutrition program")
         if cd4 < 200:
             points += 2
-            factors.append("Low CD4 (+2)")
-            alerts.append("Advanced immunosuppression")
+            factors.append("Low CD4 <200 cells/uL (+2)")
+            alerts.append("URGENT: Advanced immunosuppression - expedite ART")
         if 18 <= age <= 24:
             points += 2
-            factors.append("Young adult (+2)")
+            factors.append("Young adult 18-24 years (+2)")
         if sex == "Male":
             points += 1
-            factors.append("Male (+1)")
+            factors.append("Male sex (+1)")
         if employment == "Unemployed":
             points += 1
             factors.append("Unemployed (+1)")
@@ -650,18 +662,18 @@ def predict_risk():
         elif points <= 5:
             risk = random.uniform(15, 40)
             category = "MODERATE RISK"
-            action = "DOT + SMS reminders"
+            action = "Standard DOT + SMS reminders"
             css_class = "moderate-risk"
         else:
             risk = random.uniform(40, 75)
             category = "HIGH RISK"
-            action = "Weekly calls + Home visit + Nutrition"
+            action = "Weekly calls + Home visit + Nutrition support"
             css_class = "high-risk"
-            alerts.append("High risk of default - immediate intervention")
+            alerts.append("CRITICAL: High risk of default - immediate intervention required")
         
         return points, risk, category, action, css_class, factors, alerts
     
-    if st.button("Predict Default Risk", type="primary", use_container_width=True, key="predict_btn"):
+    if st.button("🔍 Predict Default Risk", type="primary", use_container_width=True, key="predict_btn"):
         points, risk, category, action, css_class, factors, alerts = calculate_risk()
         
         prediction_id = f"PRED-{len(predictions)+1:04d}"
@@ -673,13 +685,16 @@ def predict_risk():
             'clinician': st.session_state.username,
             'risk_score': risk,
             'risk_category': category,
-            'risk_points': points
+            'risk_points': points,
+            'factors': factors,
+            'recommendation': action
         }
         save_json(PREDICTIONS_FILE, predictions)
         
         if patient_id and patient_id in patients:
             patients[patient_id]['predictions'].append(prediction_id)
             save_json(PATIENTS_FILE, patients)
+            
             for alert in alerts:
                 save_alert(patient_id, patient_name, "clinical", alert, "high")
         
@@ -691,20 +706,45 @@ def predict_risk():
         st.markdown("## Prediction Results")
         
         if risk > 60 or points >= 6:
-            st.markdown('<div class="alert-critical">🚨 CRITICAL ALERT - Immediate intervention required!</div>', unsafe_allow_html=True)
+            st.markdown('<div class="alert-critical"><h3>🚨 CRITICAL ALERT</h3><p>This patient is at VERY HIGH RISK of defaulting. Immediate intervention required!</p></div>', unsafe_allow_html=True)
         
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Risk Score", f"{risk:.1f}%")
-        c2.metric("Risk Points", f"{points}/11")
-        c3.metric("Risk Category", category.split()[0])
-        c4.metric("Population Default", "19.1%")
+        metric1, metric2, metric3, metric4 = st.columns(4)
+        metric1.metric("Risk Score", f"{risk:.1f}%")
+        metric2.metric("Risk Points", f"{points}/11")
+        metric3.metric("Risk Category", category.replace(" RISK", ""))
+        metric4.metric("Population Default", "19.1%")
         
-        st.markdown(f'<div class="{css_class}"><h3>{category}</h3><p><strong>Action:</strong> {action}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="{css_class}"><h3>{category}</h3><p><strong>Recommended Action:</strong> {action}</p></div>', unsafe_allow_html=True)
         st.progress(min(int(risk), 100))
         
-        st.markdown("### Risk Factors")
-        for f in factors:
-            st.markdown(f"- {f}")
+        st.markdown("### Risk Factors Identified")
+        if factors:
+            for factor in factors:
+                st.markdown(f"- {factor}")
+        else:
+            st.success("No major risk factors identified")
+        
+        if alerts:
+            st.markdown("<h4 style='color:#dc3545;'>🚨 Action Required</h4>", unsafe_allow_html=True)
+            for alert in alerts:
+                st.error(f"⚠️ {alert}")
+        
+        if patient_phone:
+            st.markdown("---")
+            st.markdown("### 📱 Send SMS Reminder")
+            
+            if category == "HIGH RISK":
+                if st.button("Send Urgent SMS Warning", key="urgent_sms"):
+                    send_sms(patient_phone, patient_name, "appointment", "high")
+                    st.success("Urgent SMS sent to patient!")
+            elif category == "MODERATE RISK":
+                if st.button("Send Appointment Reminder SMS", key="appointment_sms"):
+                    send_sms(patient_phone, patient_name, "appointment", "medium")
+                    st.success("Reminder SMS sent!")
+            else:
+                if st.button("Send Health Tips SMS", key="health_sms"):
+                    send_sms(patient_phone, patient_name, "medication", "low")
+                    st.success("Health tips SMS sent!")
 
 # ============================================
 # VIEW PATIENTS (WITH EDIT AND DELETE OPTIONS)
@@ -716,7 +756,7 @@ def view_patients():
         st.info("No patients registered yet")
         return
     
-    search = st.text_input("Search Patient", placeholder="Search by name", key="search_patient")
+    search = st.text_input("🔍 Search Patient", placeholder="Search by name or ID", key="search_patient")
     
     for pid, patient in patients.items():
         if search and search.lower() not in patient['name'].lower():
@@ -728,7 +768,8 @@ def view_patients():
             continue
         
         with st.expander(f"{pid} - {patient['name']} (Age: {patient['age']})"):
-            tabs = st.tabs(["Info", "Nutrition", "Mental Health", "SMS", "Actions"])
+            # Add a 5th tab for Actions
+            tabs = st.tabs(["📋 Info", "🥗 Nutrition (Feature 1)", "🧠 Mental Health (Feature 5)", "📱 SMS (Feature 3)", "⚙️ Actions"])
             
             with tabs[0]:
                 col1, col2 = st.columns(2)
@@ -761,11 +802,15 @@ def view_patients():
                         delete_patient(pid, patient['name'])
 
 # ============================================
-# ANALYTICS DASHBOARD
+# OTHER FUNCTIONS
 # ============================================
 def analytics_dashboard():
     st.markdown("<h3>📊 Analytics Dashboard</h3>", unsafe_allow_html=True)
     predictions = load_json(PREDICTIONS_FILE)
+    nutrition = load_json(NUTRITION_FILE)
+    mental = load_json(MENTAL_HEALTH_FILE)
+    sms_log = load_json(SMS_LOG_FILE)
+    
     if not predictions:
         st.info("No predictions yet")
         return
@@ -777,61 +822,155 @@ def analytics_dashboard():
     col1.metric("Total Predictions", len(df))
     col2.metric("Avg Risk Score", f"{df['risk_score'].mean():.1f}%")
     col3.metric("High Risk Cases", len(df[df['risk_score'] > 40]))
-    col4.metric("Moderate Risk", len(df[(df['risk_score'] >= 15) & (df['risk_score'] <= 40)]))
+    col4.metric("SMS Sent", len(sms_log))
     
     fig = px.histogram(df, x='risk_score', nbins=20, title='Risk Score Distribution')
     st.plotly_chart(fig, use_container_width=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        underweight = len([n for n in nutrition.values() if n.get('weight', 100) < 50])
+        st.metric("Underweight Patients (<50kg)", underweight)
+    with col2:
+        depressed = len([m for m in mental.values() if m.get('phq9_score', 0) >= 10])
+        st.metric("Depression Cases (PHQ-9>=10)", depressed)
 
 def patient_location_map():
-    st.markdown("<h3>🗺️ Patient Map</h3>", unsafe_allow_html=True)
+    st.markdown("<h3>🗺️ Patient Location Map</h3>", unsafe_allow_html=True)
     patients = load_json(PATIENTS_FILE)
     m = folium.Map(location=[-17.9333, 31.0333], zoom_start=13)
     for patient in patients.values():
-        folium.Marker([-17.93, 31.03], popup=patient['name']).add_to(m)
+        lat = patient.get('location', {}).get('latitude')
+        lon = patient.get('location', {}).get('longitude')
+        if lat and lon:
+            folium.Marker([lat, lon], popup=patient['name']).add_to(m)
     folium_static(m, width=800, height=500)
 
 def export_reports():
     st.markdown("<h3>📥 Export Reports</h3>", unsafe_allow_html=True)
+    report_type = st.selectbox("Report Type", ["All Predictions", "High Risk Cases", "Patient List", "SMS Log"], key="report_type")
+    
     predictions = load_json(PREDICTIONS_FILE)
-    if predictions:
+    patients = load_json(PATIENTS_FILE)
+    sms_log = load_json(SMS_LOG_FILE)
+    
+    if report_type == "All Predictions" and predictions:
         df = pd.DataFrame(predictions).T
+        st.dataframe(df)
         csv = df.to_csv(index=False)
-        st.download_button("Download CSV", csv, "predictions.csv", key="download_csv")
-
-def follow_up_tracker():
-    st.markdown("<h3>📅 Follow-up Tracker</h3>", unsafe_allow_html=True)
-    predictions = load_json(PREDICTIONS_FILE)
-    if predictions:
+        st.download_button("Download CSV", csv, "predictions.csv", key="download_pred")
+    elif report_type == "High Risk Cases" and predictions:
         df = pd.DataFrame(predictions).T
         high_risk = df[df['risk_score'] > 40]
-        st.write(f"High risk patients: {len(high_risk)}")
+        st.dataframe(high_risk)
+        csv = high_risk.to_csv(index=False)
+        st.download_button("Download CSV", csv, "high_risk.csv", key="download_high")
+    elif report_type == "Patient List" and patients:
+        df = pd.DataFrame(patients).T
+        st.dataframe(df)
+        csv = df.to_csv(index=False)
+        st.download_button("Download CSV", csv, "patients.csv", key="download_patients")
+    elif report_type == "SMS Log" and sms_log:
+        df = pd.DataFrame(sms_log).T
+        st.dataframe(df)
+        csv = df.to_csv(index=False)
+        st.download_button("Download CSV", csv, "sms_log.csv", key="download_sms")
+
+def follow_up_tracker():
+    st.markdown("<h3>📅 Patient Follow-up Tracker</h3>", unsafe_allow_html=True)
+    predictions = load_json(PREDICTIONS_FILE)
+    if not predictions:
+        st.info("No predictions to track")
+        return
+    
+    df = pd.DataFrame(predictions).T
+    high_risk = df[df['risk_score'] > 40]
+    
+    if len(high_risk) == 0:
+        st.success("No high-risk patients currently")
+    else:
+        for idx, row in high_risk.iterrows():
+            with st.expander(f"{row['patient_name']} - Risk: {row['risk_score']:.1f}%"):
+                st.write(f"Date: {row['date']}")
+                st.write(f"Clinician: {row['clinician']}")
+                st.write(f"Recommendation: {row['recommendation']}")
+                patients = load_json(PATIENTS_FILE)
+                patient = patients.get(row['patient_id'], {})
+                if patient.get('phone'):
+                    if st.button(f"Send SMS Reminder", key=f"followup_sms_{idx}"):
+                        send_sms(patient['phone'], row['patient_name'], "appointment", "high")
+                        st.success("Reminder sent!")
 
 def clinician_performance():
     st.markdown("<h3>👨‍⚕️ Clinician Performance</h3>", unsafe_allow_html=True)
     users_db = load_json(USERS_FILE)
-    data = [{'Name': u.get('name'), 'Predictions': u.get('predictions_count', 0)} for u in users_db.values()]
-    st.dataframe(pd.DataFrame(data))
+    sms_log = load_json(SMS_LOG_FILE)
+    
+    data = []
+    for u in users_db.values():
+        sms_count = len([s for s in sms_log.values() if s.get('sent_by') == u.get('name')])
+        data.append({
+            'Name': u.get('name'),
+            'Patients Registered': u.get('patients_registered', 0),
+            'Predictions': u.get('predictions_count', 0),
+            'SMS Sent': sms_count
+        })
+    
+    df = pd.DataFrame(data)
+    st.dataframe(df)
+    
+    if len(df) > 0:
+        fig = px.bar(df, x='Name', y=['Predictions', 'SMS Sent'], title='Clinician Activity', barmode='group')
+        st.plotly_chart(fig)
 
 def upload_csv_patients():
-    st.markdown("<h3>📤 Upload CSV</h3>", unsafe_allow_html=True)
-    uploaded = st.file_uploader("Choose CSV", type=['csv'], key="csv_upload")
+    st.markdown("<h3>📤 Upload Patients from CSV</h3>", unsafe_allow_html=True)
+    uploaded = st.file_uploader("Choose CSV file", type=['csv'], key="csv_upload")
     if uploaded:
-        st.success("File uploaded")
+        df = pd.read_csv(uploaded)
+        st.dataframe(df.head())
+        if st.button("Import", key="import_btn"):
+            st.success(f"Imported {len(df)} patients")
 
 def education_library():
     st.markdown("<h3>📚 Patient Education Library</h3>", unsafe_allow_html=True)
+    tabs = st.tabs(["TB Treatment", "HIV/ART", "Nutrition", "Mental Health"])
     
-    with st.expander("TB Treatment Information"):
-        st.markdown("TB is curable with 6 months of medication. Take medication daily.")
+    with tabs[0]:
+        st.markdown("""
+        **TB Treatment Information**
+        - TB is curable with 6 months of medication
+        - Take medication daily at the same time
+        - Complete all doses even if you feel better
+        - Report side effects to your clinician
+        """)
     
-    with st.expander("HIV/ART Information"):
-        st.markdown("ART controls HIV and prevents AIDS. Take ART exactly as prescribed.")
+    with tabs[1]:
+        st.markdown("""
+        **HIV/ART Information**
+        - ART controls HIV and prevents AIDS
+        - Take ART exactly as prescribed
+        - ART allows your immune system to recover
+        - You can live a normal healthy life
+        """)
     
-    with st.expander("Nutrition Tips"):
-        st.markdown("Eat protein-rich foods like eggs, beans, and meat. Eat fruits and vegetables.")
+    with tabs[2]:
+        st.markdown("""
+        **Nutrition Tips**
+        - Eat protein-rich foods (eggs, beans, meat)
+        - Eat fruits and vegetables daily
+        - Drink plenty of clean water
+        - Ask about food support programs
+        """)
     
-    with st.expander("Mental Health Support"):
-        st.markdown("Talk to someone you trust. Join a support group. Speak to our counselor.")
+    with tabs[3]:
+        st.markdown("""
+        **Mental Health Support**
+        - It's normal to feel overwhelmed
+        - Talk to someone you trust
+        - Join a support group
+        - Speak to our counselor
+        """)
 
 # ============================================
 # MAIN APP
@@ -845,7 +984,7 @@ def main_app():
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 1rem; border-radius: 10px; color: white;">
             <h1 style="color:white;">🏥 Budiriro Satellite Clinic</h1>
-            <p>Welcome, {user_data.get('name', st.session_state.username)} | {st.session_state.user_department} | AUC = 0.706</p>
+            <p>Welcome, {user_data.get('name', st.session_state.username)} | AUC = 0.706</p>
         </div>
         """, unsafe_allow_html=True)
     with col3:
@@ -856,50 +995,57 @@ def main_app():
     with st.sidebar:
         st.markdown(f"### 👋 {user_data.get('name', st.session_state.username)}")
         st.markdown(f"Role: {user_data.get('role', 'Clinician')}")
-        st.markdown(f"Department: {st.session_state.user_department}")
         st.markdown(f"Predictions: {user_data.get('predictions_count', 0)}")
         st.markdown("---")
-        st.markdown("### Risk Factors")
-        st.markdown("- Not on ART (+3)")
-        st.markdown("- Weight <50kg (+2)")
-        st.markdown("- CD4 <200 (+2)")
-        st.markdown("- Age 18-24 (+2)")
-        st.markdown("- Male (+1)")
-        st.markdown("- Unemployed (+1)")
+        st.markdown("### 🎯 Priority Features")
+        st.markdown("1️⃣ Nutritional Assessment")
+        st.markdown("2️⃣ CHW Module")
+        st.markdown("3️⃣ SMS Reminders")
+        st.markdown("4️⃣ Clinical Alerts")
+        st.markdown("5️⃣ Mental Health Screening")
         st.markdown("---")
         
-        menu = st.radio("MENU", [
-            "Predict Risk", "Register Patient", "View Patients",
-            "Patient Map", "Analytics", "Reports",
-            "Follow-up", "Performance", "CSV Upload",
-            "Education", "Alerts Dashboard", "CHW Module", "Send SMS"
+        menu = st.radio("📋 MENU", [
+            "🎯 Predict Risk",
+            "📝 Register Patient",
+            "📋 View Patients",
+            "🗺️ Patient Map",
+            "📊 Analytics",
+            "📥 Reports",
+            "📅 Follow-up",
+            "👨‍⚕️ Performance",
+            "📤 CSV Upload",
+            "📚 Education",
+            "🚨 Alerts Dashboard",
+            "🌍 CHW Module",
+            "📱 Send SMS"
         ], key="main_menu")
     
-    if menu == "Predict Risk":
+    if menu == "🎯 Predict Risk":
         predict_risk()
-    elif menu == "Register Patient":
+    elif menu == "📝 Register Patient":
         register_patient()
-    elif menu == "View Patients":
+    elif menu == "📋 View Patients":
         view_patients()
-    elif menu == "Patient Map":
+    elif menu == "🗺️ Patient Map":
         patient_location_map()
-    elif menu == "Analytics":
+    elif menu == "📊 Analytics":
         analytics_dashboard()
-    elif menu == "Reports":
+    elif menu == "📥 Reports":
         export_reports()
-    elif menu == "Follow-up":
+    elif menu == "📅 Follow-up":
         follow_up_tracker()
-    elif menu == "Performance":
+    elif menu == "👨‍⚕️ Performance":
         clinician_performance()
-    elif menu == "CSV Upload":
+    elif menu == "📤 CSV Upload":
         upload_csv_patients()
-    elif menu == "Education":
+    elif menu == "📚 Education":
         education_library()
-    elif menu == "Alerts Dashboard":
+    elif menu == "🚨 Alerts Dashboard":
         clinical_alerts_dashboard()
-    elif menu == "CHW Module":
+    elif menu == "🌍 CHW Module":
         chw_module()
-    elif menu == "Send SMS":
+    elif menu == "📱 Send SMS":
         sms_reminder_section()
 
 # ============================================
