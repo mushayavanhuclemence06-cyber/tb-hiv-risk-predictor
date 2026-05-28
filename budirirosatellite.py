@@ -985,15 +985,15 @@ def main_app():
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 2rem; border-radius: 15px;">
             <div style="font-size: 72px; font-weight: 900; color: #FFFFFF; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
-                🏥 Budiriro Satellite Clinic
+                🏥 BUDIRIRO SATELLITE CLINIC
             </div>
-            <div style="font-size: 32px; font-weight: 700; color: #FFFFFF; text-align: center; margin-top: 15px;">
-                Welcome, {user_data.get('name', st.session_state.username)} | AUC = 0.706
+            <div style="font-size: 36px; font-weight: 900; color: #FFFFFF; text-align: center; margin-top: 15px;">
+                WELCOME, {user_data.get('NAME', st.session_state.USERNAME)} | AUC = 0.706
             </div>
         </div>
         """, unsafe_allow_html=True)
     with col3:
-        if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
+        if st.button("🚪 LOG OUT", use_container_width=True, key="LOG OUT_btn"):
             st.session_state.logged_in = False
             st.rerun()
     
