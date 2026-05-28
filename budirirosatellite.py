@@ -988,7 +988,7 @@ def main_app():
                 🏥 BUDIRIRO SATELLITE CLINIC
             </div>
             <div style="font-size: 36px; font-weight: 900; color: #FFFFFF; text-align: center; margin-top: 15px;">
-                WELCOME, {user_data.get('NAME', st.session_state.USERNAME)} | AUC = 0.706
+                WELCOME, {user_data.get('name', st.session_state.username)} | AUC = 0.706
             </div>
         </div>
         """, unsafe_allow_html=True)
