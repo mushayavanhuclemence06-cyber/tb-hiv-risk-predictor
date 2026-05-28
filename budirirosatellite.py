@@ -993,7 +993,7 @@ def main_app():
         </div>
         """, unsafe_allow_html=True)
     with col3:
-        if st.button("🚪 LOG OUT", use_container_width=True, key="LOG OUT_btn"):
+        if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
             st.session_state.logged_in = False
             st.rerun()
     
