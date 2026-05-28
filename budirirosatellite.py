@@ -979,17 +979,17 @@ def main_app():
     users_db = load_json(USERS_FILE)
     user_data = users_db.get(st.session_state.username, {})
     
-    # Large Header Section - BIG WHITE TEXT
+      # Large Header Section - PURE WHITE TEXT
     col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 2rem; border-radius: 15px; margin-bottom: 1rem;">
-            <h1 style="font-size: 72px !important; font-weight: 900 !important; color: #FFFFFF !important; margin: 0; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
-                🏥 BUDIRIRO SATELLITE CLINIC
-            </h1>
-            <p style="font-size: 32px !important; font-weight: 700 !important; color: #FFFFFF !important; margin: 15px 0 0 0; text-align: center;">
+        <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 2rem; border-radius: 15px;">
+            <div style="font-size: 72px; font-weight: 900; color: #FFFFFF; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+                🏥 Budiriro Satellite Clinic
+            </div>
+            <div style="font-size: 32px; font-weight: 700; color: #FFFFFF; text-align: center; margin-top: 15px;">
                 Welcome, {user_data.get('name', st.session_state.username)} | AUC = 0.706
-            </p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     with col3:
