@@ -546,29 +546,40 @@ def sms_reminder_section(patient_id=None, patient_name=None, phone=None):
 def register_patient():
     st.markdown("<h3>📝 Register New Patient</h3>", unsafe_allow_html=True)
     
-    # Simple form without complex keys
-    with st.form("register_form"):
-        patient_name = st.text_input("Patient Full Name")
-        age = st.number_input("Age", 0, 120, 30)
-        gender = st.selectbox("Gender", ["Male", "Female"])
-        phone = st.text_input("Phone Number")
-        email = st.text_input("Email Address")
-        hiv_status = st.selectbox("HIV Status", ["Positive", "Negative", "Unknown"])
-        tb_type = st.selectbox("TB Type", ["Pulmonary", "Extrapulmonary"])
-        suburb = st.text_input("Suburb/Area")
+    with st.form(key="register_patient_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            patient_name = st.text_input("Patient Full Name", key="reg_name")
+            age = st.number_input("Age", min_value=0, max_value=120, value=30, key="reg_age")
+            gender = st.selectbox("Gender", ["Male", "Female"], key="reg_gender")
+            phone = st.text_input("Phone Number", placeholder="e.g., 0771234567", key="reg_phone")
+            email = st.text_input("Email Address", placeholder="patient@example.com", key="reg_email")
+        with col2:
+            hiv_status = st.selectbox("HIV Status", ["Positive", "Negative", "Unknown"], key="reg_hiv")
+            tb_type = st.selectbox("TB Type", ["Pulmonary", "Extrapulmonary"], key="reg_tb")
+            registration_date = st.date_input("Registration Date", datetime.date.today(), key="reg_date")
         
-        submitted = st.form_submit_button("Register Patient")
+        st.markdown("<h4>📍 Location Information</h4>", unsafe_allow_html=True)
+        suburb = st.text_input("Suburb/Area", placeholder="e.g., Budiriro, Glen View", key="reg_suburb")
+        street_address = st.text_input("Street Address", placeholder="House number, street name", key="reg_address")
+        
+        # Submit button inside the form
+        submitted = st.form_submit_button("✅ Register Patient", use_container_width=True)
         
         if submitted:
+            # Validation
             if not patient_name:
-                st.error("Patient name required!")
+                st.error("❌ Patient name is required!")
                 return
             
-            # Load and save
+            # Load existing patients
             patients = load_json(PATIENTS_FILE)
+            
+            # Generate new patient ID
             patient_id = f"BUD-{len(patients)+1:04d}"
             
-            patients[patient_id] = {
+            # Create patient record
+            new_patient = {
                 'patient_id': patient_id,
                 'name': patient_name,
                 'age': age,
@@ -577,15 +588,40 @@ def register_patient():
                 'email': email,
                 'hiv_status': hiv_status,
                 'tb_type': tb_type,
-                'registration_date': str(datetime.date.today()),
+                'registration_date': str(registration_date),
                 'registered_by': st.session_state.username,
-                'location': {'suburb': suburb},
+                'location': {
+                    'suburb': suburb, 
+                    'street_address': street_address,
+                    'latitude': None,
+                    'longitude': None
+                },
                 'predictions': []
             }
             
+            # Save to file
+            patients[patient_id] = new_patient
             save_json(PATIENTS_FILE, patients)
-            st.success(f"✅ Patient {patient_name} registered! ID: {patient_id}")
+            
+            # Update user stats
+            users_db = load_json(USERS_FILE)
+            if st.session_state.username not in users_db:
+                users_db[st.session_state.username] = {'predictions_count': 0, 'patients_registered': 0}
+            users_db[st.session_state.username]['patients_registered'] = users_db[st.session_state.username].get('patients_registered', 0) + 1
+            save_json(USERS_FILE, users_db)
+            
+            # Success message
+            st.success(f"✅ Patient registered successfully!")
+            st.info(f"📋 Patient ID: {patient_id}")
             st.balloons()
+            
+            # Send welcome notifications
+            if phone:
+                send_sms(phone, patient_name, "appointment", "low")
+            if email:
+                send_email(email, patient_name, "welcome")
+            
+            # Clear form by rerunning
             st.rerun()
 # ============================================
 # PREDICT RISK
