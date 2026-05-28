@@ -552,7 +552,8 @@ def register_patient():
             patient_name = st.text_input("Patient Full Name", key="reg_name")
             age = st.number_input("Age", 0, 120, 30, key="reg_age")
             gender = st.selectbox("Gender", ["Male", "Female"], key="reg_gender")
-            phone = st.text_input("Phone Number", placeholder="e.g., 0771234567", key="reg_phone")
+            phone = st.text_input("Phone Number (for SMS)", placeholder="e.g., 0771234567", key="reg_phone")
+            email = st.text_input("Email Address (for Email)", placeholder="e.g., patient@example.com", key="reg_email")
         with col2:
             hiv_status = st.selectbox("HIV Status", ["Positive", "Negative", "Unknown"], key="reg_hiv")
             tb_type = st.selectbox("TB Type", ["Pulmonary", "Extrapulmonary"], key="reg_tb")
@@ -574,6 +575,7 @@ def register_patient():
                 'age': age,
                 'gender': gender,
                 'phone': phone,
+                'email': email,  # NEW EMAIL FIELD
                 'hiv_status': hiv_status,
                 'tb_type': tb_type,
                 'registration_date': str(registration_date),
@@ -584,12 +586,16 @@ def register_patient():
             save_json(PATIENTS_FILE, patients)
             
             users_db = load_json(USERS_FILE)
+            if st.session_state.username not in users_db:
+                users_db[st.session_state.username] = {'predictions_count': 0, 'patients_registered': 0}
             users_db[st.session_state.username]['patients_registered'] = users_db[st.session_state.username].get('patients_registered', 0) + 1
             save_json(USERS_FILE, users_db)
             
             st.success(f"✅ Patient registered! ID: {patient_id}")
             if phone:
                 send_sms(phone, patient_name, "appointment", "low")
+            if email:
+                send_email(email, patient_name, "welcome")  # NEW EMAIL FUNCTION
             st.balloons()
 
 # ============================================
