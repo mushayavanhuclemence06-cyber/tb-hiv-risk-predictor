@@ -979,16 +979,21 @@ def main_app():
     users_db = load_json(USERS_FILE)
     user_data = users_db.get(st.session_state.username, {})
     
-    col1, col2, col3 = st.columns([2, 1, 1])
+       # Large Header Section
+    col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 1rem; border-radius: 10px; color: white;">
-            <h1 style="color:white;">🏥 Budiriro Satellite Clinic</h1>
-            <p>Welcome, {user_data.get('name', st.session_state.username)} | AUC = 0.706</p>
+        <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 2rem; border-radius: 15px; color: white; text-align: center; margin-bottom: 1rem;">
+            <h1 style="font-size: 56px !important; font-weight: 900 !important; color: white !important; margin: 0; letter-spacing: 2px;">
+                🏥 Budiriro Satellite Clinic
+            </h1>
+            <p style="font-size: 28px !important; font-weight: 700 !important; color: white !important; margin: 10px 0 0 0; opacity: 0.95;">
+                Welcome, {user_data.get('name', st.session_state.username)} | AUC = 0.706
+            </p>
         </div>
         """, unsafe_allow_html=True)
     with col3:
-        if st.button("Logout", key="logout_btn"):
+        if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
             st.session_state.logged_in = False
             st.rerun()
     
