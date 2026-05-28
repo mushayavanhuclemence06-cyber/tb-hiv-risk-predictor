@@ -992,8 +992,25 @@ def main_app():
             st.session_state.logged_in = False
             st.rerun()
     
-    # Remove sidebar menu - now using center dashboard
-    # User info still in sidebar but no menu
+    # Add custom CSS for centered menu buttons
+    st.markdown("""
+    <style>
+    div.stButton > button {
+        background-color: #2e86c1;
+        color: white;
+        border-radius: 8px;
+        padding: 0.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    div.stButton > button:hover {
+        background-color: #1a5276;
+        transform: scale(1.02);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # User info in sidebar (no menu)
     with st.sidebar:
         st.markdown(f"### 👋 {user_data.get('name', st.session_state.username)}")
         st.markdown(f"**Role:** {user_data.get('role', 'Clinician')}")
@@ -1021,74 +1038,45 @@ def main_app():
     # Create centered menu buttons
     col1, col2, col3, col4 = st.columns(4)
     
+    # Initialize menu variable
+    menu = "🎯 Predict Risk"  # Default value
+    
     with col1:
-        st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
         if st.button("🎯 Predict Risk", use_container_width=True, key="menu_predict"):
             menu = "🎯 Predict Risk"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("📋 View Patients", use_container_width=True, key="menu_view"):
             menu = "📋 View Patients"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("📊 Analytics", use_container_width=True, key="menu_analytics"):
             menu = "📊 Analytics"
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
         if st.button("📝 Register Patient", use_container_width=True, key="menu_register"):
             menu = "📝 Register Patient"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("🗺️ Patient Map", use_container_width=True, key="menu_map"):
             menu = "🗺️ Patient Map"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("📥 Reports", use_container_width=True, key="menu_reports"):
             menu = "📥 Reports"
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with col3:
-        st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
         if st.button("📅 Follow-up", use_container_width=True, key="menu_followup"):
             menu = "📅 Follow-up"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("🚨 Alerts Dashboard", use_container_width=True, key="menu_alerts"):
             menu = "🚨 Alerts Dashboard"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("🌍 CHW Module", use_container_width=True, key="menu_chw"):
             menu = "🌍 CHW Module"
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with col4:
-        st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
         if st.button("👨‍⚕️ Performance", use_container_width=True, key="menu_performance"):
             menu = "👨‍⚕️ Performance"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("📤 CSV Upload", use_container_width=True, key="menu_csv"):
             menu = "📤 CSV Upload"
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div style="text-align:center; margin-top: 10px;">', unsafe_allow_html=True)
         if st.button("📚 Education", use_container_width=True, key="menu_education"):
             menu = "📚 Education"
-        st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Initialize menu variable
-        if menu == "🎯 Predict Risk":
+    # Menu routing
+    if menu == "🎯 Predict Risk":
         predict_risk()
     elif menu == "📝 Register Patient":
         register_patient()
@@ -1114,23 +1102,7 @@ def main_app():
         chw_module()
     elif menu == "📱 Send SMS":
         sms_reminder_section()
-    # Add custom CSS for centered menu buttons
-    st.markdown("""
-    <style>
-    div.stButton > button {
-        background-color: #2e86c1;
-        color: white;
-        border-radius: 8px;
-        padding: 0.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    div.stButton > button:hover {
-        background-color: #1a5276;
-        transform: scale(1.02);
-    }
-    </style>
-    """, unsafe_allow_html=True)
+
 # ============================================
 # ROUTER
 # ============================================
@@ -1139,4 +1111,5 @@ if st.session_state.logged_in:
 elif st.session_state.page == "register":
     register_page()
 else:
+    login_page()
     login_page()
