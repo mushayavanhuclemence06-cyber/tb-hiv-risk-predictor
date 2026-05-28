@@ -1,4 +1,3 @@
-
 import streamlit as st
 import hashlib
 import datetime
@@ -35,6 +34,429 @@ st.markdown("""
     .high-risk { background-color: #f8d7da; padding: 1rem; border-radius: 10px; border-left: 5px solid #dc3545; margin: 1rem 0; }
     .alert-critical { background-color: #dc3545; color: white; padding: 1rem; border-radius: 10px; animation: blink 1s infinite; }
     @keyframes blink { 50% { opacity: 0.5; } }
+    .sms-log { background-color: #e8f4fd; padding: 0.5rem; border-radius: 5px; margin: 0.25rem 0; font-size: 14px; }
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================
+# USER DATABASE
+# ============================================
+USERS_FILE = "users.json"
+PATIENTS_FILE = "patients.json"
+PREDICTIONS_FILE = "predictions.json"
+NUTRITION_FILE = "nutrition.json"
+MENTAL_HEALTH_FILE = "mental_health.json"
+ALERTS_FILE = "alerts.json"
+SMS_LOG_FILE = "sms_log.json"
+
+def load_json(file):
+    if os.path.exists(file):
+        with open(file, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_json(file, data):
+    with open(file, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def hash_password(pwd):
+    return hashlib.sha256(pwd.encode()).hexdigest()
+
+# Initialize session
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'username' not in st.session_state:
+    st.session_state.username = None
+if 'page' not in st.session_state:
+    st.session_state.page = "login"
+if 'sms_history' not in st.session_state:
+    st.session_state.sms_history = []
+if 'edit_patient_id' not in st.session_state:
+    st.session_state.edit_patient_id = None
+
+@st.cache_resource
+def get_geocoder():
+    return Nominatim(user_agent="budiriro_tb_clinic")
+
+# ============================================
+# 5 PRE-CONFIGURED USERS
+# ============================================
+PREDEFINED_USERS = {
+    'dr_chimedza': {
+        'name': 'Dr. T. Chimedza',
+        'password': 'clinic2024',
+        'role': 'Senior Clinician',
+        'department': 'TB/HIV Unit'
+    },
+    'nurse_moyo': {
+        'name': 'Nurse S. Moyo',
+        'password': 'nurse123',
+        'role': 'TB Nurse',
+        'department': 'Outpatient'
+    },
+    'clinician_dube': {
+        'name': 'Clinician M. Dube',
+        'password': 'dube456',
+        'role': 'Clinical Officer',
+        'department': 'HIV/TB Care'
+    },
+    'sister_mukoni': {
+        'name': 'Sister E. Mukoni',
+        'password': 'sister789',
+        'role': 'Senior Nursing Officer',
+        'department': 'ART Clinic'
+    },
+    'data_mahara': {
+        'name': 'Mr. T. Mahara',
+        'password': 'data2024',
+        'role': 'Data Officer',
+        'department': 'M&E Department'
+    }
+}
+
+# Load existing users or create predefined ones
+users = load_json(USERS_FILE)
+if not users:
+    for username, user_info in PREDEFINED_USERS.items():
+        users[username] = {
+            'name': user_info['name'],
+            'password': hash_password(user_info['password']),
+            'role': user_info['role'],
+            'department': user_info['department'],
+            'created': str(datetime.datetime.now()),
+            'predictions_count': 0,
+            'patients_registered': 0
+        }
+    save_json(USERS_FILE, users)
+
+# ============================================
+# SMS REMINDER FUNCTION
+# ============================================
+def send_sms(phone_number, patient_name, message_type, risk_level="low"):
+    sms_log = load_json(SMS_LOG_FILE)
+    
+    messages = {
+        "appointment": f"🏥 Budiriro Clinic Reminder: {patient_name}, you have a clinic appointment tomorrow.",
+        "medication": f"💊 Medication Reminder: {patient_name}, time to take your TB medication.",
+        "high_risk_warning": f"⚠️ URGENT: {patient_name}, you missed your last clinic appointment.",
+        "nutrition": f"🥗 Nutrition Support: {patient_name}, visit the clinic for food assistance.",
+        "mental_health": f"🧠 Mental Health Support: {patient_name}, speak to our counselor."
+    }
+    
+    if risk_level == "high" and message_type == "appointment":
+        message = messages["high_risk_warning"]
+    elif message_type == "nutrition":
+        message = messages["nutrition"]
+    elif message_type == "mental_health":
+        message = messages["mental_health"]
+    else:
+        message = messages.get(message_type, messages["medication"])
+    
+    sms_entry = {
+        'id': len(sms_log) + 1,
+        'patient_name': patient_name,
+        'phone': phone_number,
+        'message_type': message_type,
+        'message': message,
+        'risk_level': risk_level,
+        'sent_time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'sent_by': st.session_state.username,
+        'status': 'delivered'
+    }
+    
+    sms_log[str(len(sms_log) + 1)] = sms_entry
+    save_json(SMS_LOG_FILE, sms_log)
+    st.session_state.sms_history.insert(0, sms_entry)
+    return message
+
+def display_sms_history():
+    sms_log = load_json(SMS_LOG_FILE)
+    if sms_log:
+        st.markdown("#### Recent SMS Messages")
+        for sms in list(sms_log.values())[-5:]:
+            st.markdown(f'<div class="sms-log">📱 To: {sms["patient_name"]} | {sms["message"]}<br>⏰ {sms["sent_time"]}</div>', unsafe_allow_html=True)
+
+# ============================================
+# LOGIN PAGE
+# ============================================
+def login_page():
+    st.markdown("<h1 style='text-align:center;'>🏥 Budiriro Satellite Clinic</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;'>TB/HIV Treatment Default Risk Prediction System</h3>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.markdown('<div style="background-color: #f0f2f6; padding: 2rem; border-radius: 10px;">', unsafe_allow_html=True)
+        
+        st.markdown("<p style='text-align:center; font-size:14px;'>🔐 Authorized Clinical Personnel Only</p>", unsafe_allow_html=True)
+        
+        department = st.selectbox("Select Department", [
+            "TB/HIV Unit",
+            "Outpatient", 
+            "ART Clinic",
+            "M&E Department"
+        ], key="dept_select")
+        
+        if department == "TB/HIV Unit":
+            user_options = ["dr_chimedza", "clinician_dube"]
+        elif department == "Outpatient":
+            user_options = ["nurse_moyo"]
+        elif department == "ART Clinic":
+            user_options = ["sister_mukoni"]
+        elif department == "M&E Department":
+            user_options = ["data_mahara"]
+        else:
+            user_options = ["dr_chimedza", "nurse_moyo", "clinician_dube", "sister_mukoni", "data_mahara"]
+        
+        username = st.selectbox("Select User", user_options, format_func=lambda x: PREDEFINED_USERS[x]['name'], key="user_select")
+        password = st.text_input("Password", type="password", placeholder="Enter your password", key="pwd_input")
+        
+        if st.button("🔐 Login", use_container_width=True, type="primary", key="login_btn"):
+            if username in PREDEFINED_USERS:
+                if password == PREDEFINED_USERS[username]['password']:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.user_name = PREDEFINED_USERS[username]['name']
+                    st.session_state.user_role = PREDEFINED_USERS[username]['role']
+                    st.session_state.user_department = department
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid password.")
+            else:
+                st.error("❌ Invalid username.")
+        
+        st.markdown("---")
+        st.markdown("<p style='text-align:center; font-size:12px; font-weight:bold;'>Authorized Users by Department</p>", unsafe_allow_html=True)
+        
+        user_info = """
+        <table style='width:100%; font-size:12px;'>
+            <tr><th>Department</th><th>Username</th><th>User</th></tr>
+            <tr><td>TB/HIV Unit</td><td>dr_chimedza</td><td>Dr. T. Chimedza</td></tr>
+            <tr><td>TB/HIV Unit</td><td>clinician_dube</td><td>Clinician M. Dube</td></tr>
+            <tr><td>Outpatient</td><td>nurse_moyo</td><td>Nurse S. Moyo</td></tr>
+            <tr><td>ART Clinic</td><td>sister_mukoni</td><td>Sister E. Mukoni</td></tr>
+            <tr><td>M&E Department</td><td>data_mahara</td><td>Mr. T. Mahara</td></tr>
+        </table>
+        """
+        st.markdown(user_info, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================
+# REGISTER PAGE - DISABLED
+# ============================================
+def register_page():
+    st.markdown("<h2 style='text-align:center;'>Registration Disabled</h2>", unsafe_allow_html=True)
+    st.warning("Account creation is disabled. Please contact the system administrator for access.")
+    
+    if st.button("Back to Login", use_container_width=True, key="back_to_login"):
+        st.session_state.page = "login"
+        st.rerun()
+
+# ============================================
+# SAVE ALERT FUNCTION
+# ============================================
+def save_alert(patient_id, patient_name, alert_type, message, priority="high"):
+    alerts = load_json(ALERTS_FILE)
+    alert_id = f"ALT-{len(alerts)+1:04d}"
+    alerts[alert_id] = {
+        'patient_id': patient_id,
+        'patient_name': patient_name,
+        'type': alert_type,
+        'message': message,
+        'priority': priority,
+        'date': str(datetime.datetime.now()),
+        'resolved': False,
+        'clinician': st.session_state.username
+    }
+    save_json(ALERTS_FILE, alerts)
+    
+    if priority == "high":
+        patients = load_json(PATIENTS_FILE)
+        if patient_id in patients and patients[patient_id].get('phone'):
+            send_sms(patients[patient_id]['phone'], patient_name, "appointment", "high")
+
+# ============================================
+# EDIT PATIENT FUNCTION
+# ============================================
+def edit_patient(patient_id, patient_data):
+    st.markdown("<h4>✏️ Edit Patient Details</h4>", unsafe_allow_html=True)
+    
+    with st.form(key=f"edit_form_{patient_id}"):
+        col1, col2 = st.columns(2)
+        with col1:
+            new_name = st.text_input("Patient Full Name", value=patient_data['name'], key=f"edit_name_{patient_id}")
+            new_age = st.number_input("Age", 0, 120, value=patient_data['age'], key=f"edit_age_{patient_id}")
+            new_gender = st.selectbox("Gender", ["Male", "Female"], index=0 if patient_data['gender'] == "Male" else 1, key=f"edit_gender_{patient_id}")
+            new_phone = st.text_input("Phone Number", value=patient_data.get('phone', ''), key=f"edit_phone_{patient_id}")
+        with col2:
+            new_hiv = st.selectbox("HIV Status", ["Positive", "Negative", "Unknown"], 
+                                   index=["Positive", "Negative", "Unknown"].index(patient_data.get('hiv_status', 'Unknown')),
+                                   key=f"edit_hiv_{patient_id}")
+            new_tb = st.selectbox("TB Type", ["Pulmonary", "Extrapulmonary"],
+                                  index=0 if patient_data.get('tb_type', 'Pulmonary') == "Pulmonary" else 1,
+                                  key=f"edit_tb_{patient_id}")
+            new_suburb = st.text_input("Suburb/Area", value=patient_data.get('location', {}).get('suburb', ''), key=f"edit_suburb_{patient_id}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("💾 Save Changes"):
+                patients = load_json(PATIENTS_FILE)
+                patients[patient_id]['name'] = new_name
+                patients[patient_id]['age'] = new_age
+                patients[patient_id]['gender'] = new_gender
+                patients[patient_id]['phone'] = new_phone
+                patients[patient_id]['hiv_status'] = new_hiv
+                patients[patient_id]['tb_type'] = new_tb
+                if 'location' not in patients[patient_id]:
+                    patients[patient_id]['location'] = {}
+                patients[patient_id]['location']['suburb'] = new_suburb
+                save_json(PATIENTS_FILE, patients)
+                st.success("✅ Patient details updated!")
+                st.session_state.edit_patient_id = None
+                st.rerun()
+        with col2:
+            if st.form_submit_button("❌ Cancel"):
+                st.session_state.edit_patient_id = None
+                st.rerun()
+
+# ============================================
+# DELETE PATIENT FUNCTION
+# ============================================
+def delete_patient(patient_id, patient_name):
+    st.markdown("<h4>⚠️ Delete Patient Record</h4>", unsafe_allow_html=True)
+    st.warning(f"Are you sure you want to delete **{patient_name}**? This action cannot be undone.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🗑️ Yes, Delete Patient", key=f"confirm_delete_{patient_id}"):
+            patients = load_json(PATIENTS_FILE)
+            if patient_id in patients:
+                del patients[patient_id]
+                save_json(PATIENTS_FILE, patients)
+                st.success(f"✅ Patient {patient_name} has been deleted!")
+                st.rerun()
+    with col2:
+        if st.button("❌ Cancel", key=f"cancel_delete_{patient_id}"):
+            st.rerun()
+
+# ============================================
+# NUTRITIONAL ASSESSMENT
+# ============================================
+def nutritional_assessment(patient_id, patient_name):
+    st.markdown("<h4>🥗 Nutritional Assessment</h4>", unsafe_allow_html=True)
+    nutrition_data = load_json(NUTRITION_FILE)
+    
+    with st.form(key=f"nut_form_{patient_id}"):
+        col1, col2 = st.columns(2)
+        with col1:
+            weight = st.number_input("Current Weight (kg)", 25.0, 150.0, 60.0, key=f"weight_{patient_id}")
+            height = st.number_input("Height (cm)", 100, 250, 165, key=f"height_{patient_id}")
+            muac = st.number_input("MUAC (cm)", 10.0, 40.0, 25.0, key=f"muac_{patient_id}")
+        with col2:
+            bmi = weight / ((height/100) ** 2)
+            st.metric("BMI", f"{bmi:.1f}")
+            
+            if weight < 50:
+                st.error("🔴 CRITICAL: Severe underweight - High risk of default")
+                save_alert(patient_id, patient_name, "nutrition", f"Severe underweight: {weight}kg", "high")
+            elif weight < 55:
+                st.warning("🟡 Moderate underweight - Monitor closely")
+            else:
+                st.success("🟢 Normal weight - Continue monitoring")
+        
+        st.markdown("#### Food Security Assessment")
+        food_insecure = st.radio("In the past month, did you ever run out of food?", 
+                                  ["No", "Yes, sometimes", "Yes, often"],
+                                  key=f"food_{patient_id}")
+        
+        if food_insecure in ["Yes, sometimes", "Yes, often"]:
+            st.warning("🚨 Food insecurity detected - Refer to social services")
+        
+        if st.form_submit_button("💾 Save Nutritional Assessment"):
+            nutrition_data[patient_id] = {
+                'patient_name': patient_name,
+                'date': str(datetime.datetime.now()),
+                'weight': weight,
+                'height': height,
+                'bmi': bmi,
+                'muac': muac,
+                'food_insecure': food_insecure,
+                'assessed_by': st.session_state.username
+            }
+            save_json(NUTRITION_FILE, nutrition_data)
+            st.success("✅ Nutritional assessment saved!")
+
+# ============================================
+# MENTAL HEALTH SCREENING
+# ============================================
+def mental_health_screening(patient_id, patient_name):
+    st.markdown("<h4>🧠 Mental Health Screening (PHQ-9)</h4>", unsafe_allow_html=True)
+    mental_data = load_json(MENTAL_HEALTH_FILE)
+    
+    st.markdown("Over the last 2 weeks, how often have you been bothered by the following problems?")
+    
+    phq9_questions = [
+        "Little interest or pleasure in doing things?",
+        "Feeling down, depressed, or hopeless?",
+        "Trouble falling/staying asleep or sleeping too much?",
+        "Feeling tired or having little energy?",
+        "Poor appetite or overeating?",
+        "Feeling bad about yourself?",
+        "Trouble concentrating on things?",
+        "Moving or speaking slowly?",
+        "Thoughts that you would be better off dead or hurting yourself?"
+    ]
+    
+    phq9_scores = []
+    for i, q in enumerate(phq9_questions):
+        score = st.radio(f"{i+1}. {q}", [0, 1, 2, 3], 
+                         format_func=lambda x: ["Not at all", "Several days", "More than half days", "Nearly every day"][x],
+                         horizontal=True, key=f"phq9_{patient_id}_{i}")
+        phq9_scores.append(score)
+    
+    total_phq9 = sum(phq9_scores)
+    
+    st.markdown("---")
+    
+    if total_phq9 >= 15:
+        st.error(f"🔴 PHQ-9 Score: {total_phq9} - Severe Depression")
+        save_alert(patient_id, patient_name, "mental_health", f"PHQ-9 score: {total_phq9}", "high")
+    elif total_phq9 >= 10:
+        st.warning(f"🟡 PHQ-9 Score: {total_phq9} - Moderate Depression")
+        save_alert(patient_id, patient_name, "mental_health", f"PHQ-9 score: {total_phq9}", "medium")
+    elif total_phq9 >= 5:
+        st.info(f"📊 PHQ-9 Score: {total_phq9} - Mild Depression")
+    else:
+        st.success(f"🟢 PHQ-9 Score: {total_phq9} - Minimal depression")
+    
+    if st.button(f"💾 Save Mental Health Assessment", key=f"save_mh_{patient_id}"):
+        mental_data[patient_id] = {
+            'patient_name': patient_name,
+            'date': str(datetime.datetime.now()),
+            'phq9_score': total_phq9,
+            'responses': phq9_scores,
+            'assessed_by': st.session_state.username
+        }
+        save_json(MENTAL_HEALTH_FILE, mental_data)
+        st.success("✅ Mental health assessment saved!")
+
+# ============================================
+# CLINICAL ALERTS DASHBOARD
+# ============================================
+def clinical_alerts_dashboard():
+    st.markdown("<h3>🚨 Clinical Alerts Dashboard</h3>", unsafe_allow_html=True)
+    
+    alerts = load_json(ALERTS_FILE)
+    unresolved = {k:v for k,v in alerts.items() if not v.get('resolved', False)}
+    
+    high_priority = [a for a in unresolved.values() if a.get('priority') == 'high']
+    medium_priority = [a for a in unresolved.values() if a.get('priority') == 'medium']
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Active Alerts", len(unresolved))
+        @keyframes blink { 50% { opacity: 0.5; } }
     .sms-log { background-color: #e8f4fd; padding: 0.5rem; border-radius: 5px; margin: 0.25rem 0; font-size: 14px; }
 </style>
 """, unsafe_allow_html=True)
