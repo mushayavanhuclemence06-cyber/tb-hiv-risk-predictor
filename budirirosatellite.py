@@ -100,8 +100,8 @@ PREDEFINED_USERS = {
         'role': 'Clinical Officer',
         'department': 'HIV/TB Care'
     },
-    'sister_mukoni': {
-        'name': 'Sister E. Mukoni',
+    'sister_madziro': {
+        'name': 'Sister E. Madziro',
         'password': 'sister789',
         'role': 'Senior Nursing Officer',
         'department': 'ART Clinic'
@@ -180,7 +180,7 @@ def display_sms_history():
 # LOGIN PAGE
 # ============================================
 def login_page():
-    st.markdown("<h1 style='text-align:center;'>🏥 Budiriro Satellite Clinic</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center;'>🏥 BUDIRIRO SATELLITE CLINIC</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;'>TB/HIV Treatment Default Risk Prediction System</h3>", unsafe_allow_html=True)
     st.markdown("---")
     
@@ -203,11 +203,11 @@ def login_page():
         elif department == "Outpatient":
             user_options = ["nurse_moyo"]
         elif department == "ART Clinic":
-            user_options = ["sister_mukoni"]
+            user_options = ["sister_madziro"]
         elif department == "M&E Department":
             user_options = ["data_mahara"]
         else:
-            user_options = ["dr_chimedza", "nurse_moyo", "clinician_dube", "sister_mukoni", "data_mahara"]
+            user_options = ["dr_chimedza", "nurse_moyo", "clinician_dube", "sister_madziro", "data_mahara"]
         
         username = st.selectbox("Select User", user_options, format_func=lambda x: PREDEFINED_USERS[x]['name'], key="user_select")
         password = st.text_input("Password", type="password", placeholder="Enter your password", key="pwd_input")
@@ -235,7 +235,7 @@ def login_page():
             <tr><td>TB/HIV Unit</td><td>dr_chimedza</td><td>Dr. T. Chimedza</td></tr>
             <tr><td>TB/HIV Unit</td><td>clinician_dube</td><td>Clinician M. Dube</td></tr>
             <tr><td>Outpatient</td><td>nurse_moyo</td><td>Nurse S. Moyo</td></tr>
-            <tr><td>ART Clinic</td><td>sister_mukoni</td><td>Sister E. Mukoni</td></tr>
+            <tr><td>ART Clinic</td><td>sister_madziro</td><td>Sister E. Madziro</td></tr>
             <tr><td>M&E Department</td><td>data_mahara</td><td>Mr. T. Mahara</td></tr>
         </table>
         """
