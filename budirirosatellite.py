@@ -1088,8 +1088,32 @@ def main_app():
     st.markdown("---")
     
     # Initialize menu variable
-    if 'menu' not in dir():
-        menu = "🎯 Predict Risk"
+        if menu == "🎯 Predict Risk":
+        predict_risk()
+    elif menu == "📝 Register Patient":
+        register_patient()
+    elif menu == "📋 View Patients":
+        view_patients()
+    elif menu == "🗺️ Patient Map":
+        patient_location_map()
+    elif menu == "📊 Analytics":
+        analytics_dashboard()
+    elif menu == "📥 Reports":
+        export_reports()
+    elif menu == "📅 Follow-up":
+        follow_up_tracker()
+    elif menu == "👨‍⚕️ Performance":
+        clinician_performance()
+    elif menu == "📤 CSV Upload":
+        upload_csv_patients()
+    elif menu == "📚 Education":
+        education_library()
+    elif menu == "🚨 Alerts Dashboard":
+        clinical_alerts_dashboard()
+    elif menu == "🌍 CHW Module":
+        chw_module()
+    elif menu == "📱 Send SMS":
+        sms_reminder_section()
     # Add custom CSS for centered menu buttons
     st.markdown("""
     <style>
