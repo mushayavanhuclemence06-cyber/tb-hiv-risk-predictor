@@ -986,6 +986,7 @@ def main_app():
         <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); padding: 2rem; border-radius: 15px;">
             <div style="font-size: 72px; font-weight: 900; color: #FFFFFF; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
                           WELCOME TO
+            </div>             
                 🏥 BUDIRIRO SATELLITE CLINIC
             </div>
             <div style="font-size: 36px; font-weight: 900; color: #FFFFFF; text-align: center; margin-top: 15px;">
