@@ -80,6 +80,8 @@ if 'edit_patient_id' not in st.session_state:
     st.session_state.edit_patient_id = None
 if 'menu' not in st.session_state:
     st.session_state.menu = "🎯 Predict Risk"
+if 'delete_confirmation' not in st.session_state:
+    st.session_state.delete_confirmation = None
 
 @st.cache_resource
 def get_geocoder():
@@ -365,7 +367,7 @@ def edit_patient(patient_id, patient_data):
                 st.rerun()
 
 # ============================================
-# DELETE PATIENT FUNCTION
+# DELETE PATIENT FUNCTION - FIXED
 # ============================================
 def delete_patient(patient_id, patient_name):
     st.markdown("<h4>⚠️ Delete Patient Record</h4>", unsafe_allow_html=True)
@@ -373,13 +375,31 @@ def delete_patient(patient_id, patient_name):
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🗑️ Yes, Delete Patient", key=f"confirm_delete_{patient_id}"):
+        if st.button("🗑️ Yes, Delete Permanently", key=f"confirm_delete_{patient_id}"):
             patients = load_json(PATIENTS_FILE)
             if patient_id in patients:
+                # Also delete associated data
                 del patients[patient_id]
                 save_json(PATIENTS_FILE, patients)
-                st.success(f"✅ Patient {patient_name} has been deleted!")
+                
+                # Also remove from nutrition file if exists
+                nutrition = load_json(NUTRITION_FILE)
+                if patient_id in nutrition:
+                    del nutrition[patient_id]
+                    save_json(NUTRITION_FILE, nutrition)
+                
+                # Also remove from mental health file if exists
+                mental = load_json(MENTAL_HEALTH_FILE)
+                if patient_id in mental:
+                    del mental[patient_id]
+                    save_json(MENTAL_HEALTH_FILE, mental)
+                
+                st.success(f"✅ Patient {patient_name} has been permanently deleted!")
+                st.balloons()
+                time.sleep(1)
                 st.rerun()
+            else:
+                st.error("Patient not found!")
     with col2:
         if st.button("❌ Cancel", key=f"cancel_delete_{patient_id}"):
             st.rerun()
@@ -581,7 +601,7 @@ def sms_reminder_section(patient_id=None, patient_name=None, phone=None):
     display_sms_history()
 
 # ============================================
-# REGISTER PATIENT - FIXED (No redirect, stays on page)
+# REGISTER PATIENT - FIXED
 # ============================================
 def register_patient():
     st.markdown("<h3>📝 Register New Patient</h3>", unsafe_allow_html=True)
@@ -781,7 +801,7 @@ def predict_risk():
             st.markdown(f"- {f}")
 
 # ============================================
-# VIEW PATIENTS
+# VIEW PATIENTS - FIXED
 # ============================================
 def view_patients():
     st.markdown("<h3>📋 Patient Registry</h3>", unsafe_allow_html=True)
@@ -792,7 +812,10 @@ def view_patients():
     
     search = st.text_input("🔍 Search Patient", placeholder="Search by name or ID", key="search_patient")
     
-    for pid, patient in patients.items():
+    # Convert to list to avoid dictionary size change during iteration
+    patient_items = list(patients.items())
+    
+    for pid, patient in patient_items:
         if search and search.lower() not in patient['name'].lower():
             continue
         
