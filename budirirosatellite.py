@@ -78,10 +78,10 @@ if 'sms_history' not in st.session_state:
     st.session_state.sms_history = []
 if 'edit_patient_id' not in st.session_state:
     st.session_state.edit_patient_id = None
+if 'delete_patient_id' not in st.session_state:
+    st.session_state.delete_patient_id = None
 if 'menu' not in st.session_state:
     st.session_state.menu = "🎯 Predict Risk"
-if 'delete_trigger' not in st.session_state:
-    st.session_state.delete_trigger = False
 
 @st.cache_resource
 def get_geocoder():
@@ -367,50 +367,66 @@ def edit_patient(patient_id, patient_data):
                 st.rerun()
 
 # ============================================
-# DELETE PATIENT FUNCTION - FULLY WORKING
+# DELETE PATIENT FUNCTION - UPDATED VERSION
 # ============================================
 def delete_patient(patient_id, patient_name):
-    st.markdown("<h4>⚠️ Delete Patient Record</h4>", unsafe_allow_html=True)
-    st.warning(f"Are you sure you want to delete **{patient_name}**? This action cannot be undone.")
-    
+    st.error(f"⚠️ Delete Patient: {patient_name}")
+
     col1, col2 = st.columns(2)
+
     with col1:
-        if st.button("🗑️ Yes, Delete Permanently", key=f"confirm_delete_{patient_id}"):
-            # Load current data
+        if st.button(
+            "✅ Confirm Permanent Delete",
+            key=f"confirm_delete_{patient_id}"
+        ):
             patients = load_json(PATIENTS_FILE)
-            
-            # Remove patient if exists
+
             if patient_id in patients:
                 del patients[patient_id]
-                
-                # Save back to file
-                save_json(PATIENTS_FILE, patients)
-                
-                # Also remove from related files if they exist
-                nutrition = load_json(NUTRITION_FILE)
-                if patient_id in nutrition:
-                    del nutrition[patient_id]
+
+                if save_json(PATIENTS_FILE, patients):
+                    # Delete nutrition record
+                    nutrition = load_json(NUTRITION_FILE)
+                    nutrition.pop(patient_id, None)
                     save_json(NUTRITION_FILE, nutrition)
-                
-                mental = load_json(MENTAL_HEALTH_FILE)
-                if patient_id in mental:
-                    del mental[patient_id]
+
+                    # Delete mental health record
+                    mental = load_json(MENTAL_HEALTH_FILE)
+                    mental.pop(patient_id, None)
                     save_json(MENTAL_HEALTH_FILE, mental)
-                
-                # Clear edit mode if this patient was being edited
-                if st.session_state.edit_patient_id == patient_id:
-                    st.session_state.edit_patient_id = None
-                
-                st.success(f"✅ Patient {patient_name} has been permanently deleted!")
-                st.balloons()
-                
-                # Force a complete refresh
-                time.sleep(0.5)
-                st.rerun()
+
+                    # Delete alerts
+                    alerts = load_json(ALERTS_FILE)
+                    alerts = {
+                        k: v for k, v in alerts.items()
+                        if v.get("patient_id") != patient_id
+                    }
+                    save_json(ALERTS_FILE, alerts)
+
+                    # Delete predictions
+                    predictions = load_json(PREDICTIONS_FILE)
+                    predictions = {
+                        k: v for k, v in predictions.items()
+                        if v.get("patient_id") != patient_id
+                    }
+                    save_json(PREDICTIONS_FILE, predictions)
+
+                    st.session_state.delete_patient_id = None
+
+                    st.success(
+                        f"✅ {patient_name} deleted successfully"
+                    )
+
+                    st.rerun()
             else:
-                st.error("Patient not found!")
+                st.error("Patient not found.")
+
     with col2:
-        if st.button("❌ Cancel", key=f"cancel_delete_{patient_id}"):
+        if st.button(
+            "❌ Cancel",
+            key=f"cancel_delete_{patient_id}"
+        ):
+            st.session_state.delete_patient_id = None
             st.rerun()
 
 # ============================================
@@ -810,7 +826,7 @@ def predict_risk():
             st.markdown(f"- {f}")
 
 # ============================================
-# VIEW PATIENTS - WITH FIXED DELETE
+# VIEW PATIENTS - WITH DELETE BUTTON
 # ============================================
 def view_patients():
     st.markdown("<h3>📋 Patient Registry</h3>", unsafe_allow_html=True)
@@ -832,6 +848,11 @@ def view_patients():
         patient = patients[pid]
         
         if search and search.lower() not in patient['name'].lower():
+            continue
+        
+        # Show delete confirmation if this patient is being deleted
+        if st.session_state.delete_patient_id == pid:
+            delete_patient(pid, patient['name'])
             continue
         
         if st.session_state.edit_patient_id == pid:
@@ -870,7 +891,8 @@ def view_patients():
                         st.rerun()
                 with col2:
                     if st.button("🗑️ Delete Patient", key=f"delete_{pid}"):
-                        delete_patient(pid, patient['name'])
+                        st.session_state.delete_patient_id = pid
+                        st.rerun()
 
 # ============================================
 # OTHER FUNCTIONS
