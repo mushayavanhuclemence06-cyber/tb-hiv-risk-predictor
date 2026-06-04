@@ -367,7 +367,7 @@ def edit_patient(patient_id, patient_data):
                 st.rerun()
 
 # ============================================
-# DELETE PATIENT FUNCTION - UPDATED VERSION
+# DELETE PATIENT FUNCTION - UPDATED WITH COUNT FIX
 # ============================================
 def delete_patient(patient_id, patient_name):
     st.error(f"⚠️ Delete Patient: {patient_name}")
@@ -382,6 +382,10 @@ def delete_patient(patient_id, patient_name):
             patients = load_json(PATIENTS_FILE)
 
             if patient_id in patients:
+                # Get the clinician who registered this patient
+                registered_by = patients[patient_id].get('registered_by')
+                
+                # Delete the patient
                 del patients[patient_id]
 
                 if save_json(PATIENTS_FILE, patients):
@@ -410,6 +414,18 @@ def delete_patient(patient_id, patient_name):
                         if v.get("patient_id") != patient_id
                     }
                     save_json(PREDICTIONS_FILE, predictions)
+                    
+                    # Update the user's patients_registered count
+                    if registered_by:
+                        users_db = load_json(USERS_FILE)
+                        if registered_by in users_db:
+                            current_count = users_db[registered_by].get('patients_registered', 0)
+                            users_db[registered_by]['patients_registered'] = max(0, current_count - 1)
+                            save_json(USERS_FILE, users_db)
+                            
+                            # If the current logged-in user is the one who registered the patient, update session
+                            if st.session_state.username == registered_by:
+                                st.session_state.user_patients_count = users_db[registered_by]['patients_registered']
 
                     st.session_state.delete_patient_id = None
 
@@ -473,6 +489,7 @@ def nutritional_assessment(patient_id, patient_name):
             }
             save_json(NUTRITION_FILE, nutrition_data)
             st.success("✅ Nutritional assessment saved!")
+
 # ============================================
 # MENTAL HEALTH SCREENING
 # ============================================
@@ -680,6 +697,9 @@ def register_patient():
                         users_db[st.session_state.username] = {'predictions_count': 0, 'patients_registered': 0}
                     users_db[st.session_state.username]['patients_registered'] = users_db[st.session_state.username].get('patients_registered', 0) + 1
                     save_json(USERS_FILE, users_db)
+                    
+                    # Update session state for sidebar
+                    st.session_state.user_patients_count = users_db[st.session_state.username]['patients_registered']
                     
                     st.success(f"✅ Patient {patient_name} registered successfully!")
                     st.info(f"📋 Patient ID: {patient_id}")
@@ -1033,6 +1053,10 @@ def main_app():
     users_db = load_json(USERS_FILE)
     user_data = users_db.get(st.session_state.username, {})
     
+    # Get the correct patient count directly from the patients file
+    patients = load_json(PATIENTS_FILE)
+    actual_patient_count = len([p for p in patients.values() if p.get('registered_by') == st.session_state.username])
+    
     col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         st.markdown(f"""
@@ -1072,7 +1096,7 @@ def main_app():
         st.markdown(f"**Role:** {user_data.get('role', 'Clinician')}")
         st.markdown(f"**Department:** {st.session_state.user_department}")
         st.markdown(f"**Predictions:** {user_data.get('predictions_count', 0)}")
-        st.markdown(f"**Patients Registered:** {user_data.get('patients_registered', 0)}")
+        st.markdown(f"**Patients Registered:** {actual_patient_count}")
         st.markdown("---")
         st.markdown("### 📊 Model Stats")
         st.markdown(f"**AUC-ROC:** 0.706")
