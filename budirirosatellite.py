@@ -430,7 +430,7 @@ def delete_patient(patient_id, patient_name):
             st.rerun()
 
 # ============================================
-# NUTRITIONAL ASSESSMENT
+# NUTRITIONAL ASSESSMENT - MUAC REMOVED
 # ============================================
 def nutritional_assessment(patient_id, patient_name):
     st.markdown("<h4>🥗 Nutritional Assessment</h4>", unsafe_allow_html=True)
@@ -441,7 +441,6 @@ def nutritional_assessment(patient_id, patient_name):
         with col1:
             weight = st.number_input("Current Weight (kg)", 25.0, 150.0, 60.0, key=f"weight_{patient_id}")
             height = st.number_input("Height (cm)", 100, 250, 165, key=f"height_{patient_id}")
-            muac = st.number_input("MUAC (cm)", 10.0, 40.0, 25.0, key=f"muac_{patient_id}")
         with col2:
             bmi = weight / ((height/100) ** 2)
             st.metric("BMI", f"{bmi:.1f}")
@@ -469,13 +468,11 @@ def nutritional_assessment(patient_id, patient_name):
                 'weight': weight,
                 'height': height,
                 'bmi': bmi,
-                'muac': muac,
                 'food_insecure': food_insecure,
                 'assessed_by': st.session_state.username
             }
             save_json(NUTRITION_FILE, nutrition_data)
             st.success("✅ Nutritional assessment saved!")
-
 # ============================================
 # MENTAL HEALTH SCREENING
 # ============================================
