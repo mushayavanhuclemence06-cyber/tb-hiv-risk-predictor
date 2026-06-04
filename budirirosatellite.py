@@ -78,6 +78,8 @@ if 'sms_history' not in st.session_state:
     st.session_state.sms_history = []
 if 'edit_patient_id' not in st.session_state:
     st.session_state.edit_patient_id = None
+if 'menu' not in st.session_state:
+    st.session_state.menu = "🎯 Predict Risk"
 
 @st.cache_resource
 def get_geocoder():
@@ -579,77 +581,76 @@ def sms_reminder_section(patient_id=None, patient_name=None, phone=None):
     display_sms_history()
 
 # ============================================
-# REGISTER PATIENT - FIXED WORKING VERSION
+# REGISTER PATIENT - FIXED (No redirect, stays on page)
 # ============================================
 def register_patient():
     st.markdown("<h3>📝 Register New Patient</h3>", unsafe_allow_html=True)
     
-    with st.form(key="register_patient_form"):
+    with st.form(key="register_patient_form_main"):
         col1, col2 = st.columns(2)
         with col1:
-            patient_name = st.text_input("Patient Full Name", key="reg_name")
-            age = st.number_input("Age", min_value=0, max_value=120, value=30, key="reg_age")
-            gender = st.selectbox("Gender", ["Male", "Female"], key="reg_gender")
-            phone = st.text_input("Phone Number", placeholder="e.g., 0771234567", key="reg_phone")
-            email = st.text_input("Email Address", placeholder="patient@example.com", key="reg_email")
+            patient_name = st.text_input("Patient Full Name", key="reg_name_main")
+            age = st.number_input("Age", min_value=0, max_value=120, value=30, key="reg_age_main")
+            gender = st.selectbox("Gender", ["Male", "Female"], key="reg_gender_main")
+            phone = st.text_input("Phone Number", placeholder="e.g., 0771234567", key="reg_phone_main")
+            email = st.text_input("Email Address", placeholder="patient@example.com", key="reg_email_main")
         with col2:
-            hiv_status = st.selectbox("HIV Status", ["Positive", "Negative", "Unknown"], key="reg_hiv")
-            tb_type = st.selectbox("TB Type", ["Pulmonary", "Extrapulmonary"], key="reg_tb")
-            registration_date = st.date_input("Registration Date", datetime.date.today(), key="reg_date")
+            hiv_status = st.selectbox("HIV Status", ["Positive", "Negative", "Unknown"], key="reg_hiv_main")
+            tb_type = st.selectbox("TB Type", ["Pulmonary", "Extrapulmonary"], key="reg_tb_main")
+            registration_date = st.date_input("Registration Date", datetime.date.today(), key="reg_date_main")
         
         st.markdown("<h4>📍 Location Information</h4>", unsafe_allow_html=True)
-        suburb = st.text_input("Suburb/Area", placeholder="e.g., Budiriro, Glen View", key="reg_suburb")
-        street_address = st.text_input("Street Address", placeholder="House number, street name", key="reg_address")
+        suburb = st.text_input("Suburb/Area", placeholder="e.g., Budiriro, Glen View", key="reg_suburb_main")
+        street_address = st.text_input("Street Address", placeholder="House number, street name", key="reg_address_main")
         
         submitted = st.form_submit_button("✅ Register Patient", use_container_width=True)
         
         if submitted:
             if not patient_name:
                 st.error("❌ Patient name is required!")
-                return
-            
-            patients = load_json(PATIENTS_FILE)
-            patient_id = f"BUD-{len(patients)+1:04d}"
-            
-            patients[patient_id] = {
-                'patient_id': patient_id,
-                'name': patient_name,
-                'age': age,
-                'gender': gender,
-                'phone': phone,
-                'email': email,
-                'hiv_status': hiv_status,
-                'tb_type': tb_type,
-                'registration_date': str(registration_date),
-                'registered_by': st.session_state.username,
-                'location': {
-                    'suburb': suburb,
-                    'street_address': street_address,
-                    'latitude': None,
-                    'longitude': None
-                },
-                'predictions': []
-            }
-            
-            if save_json(PATIENTS_FILE, patients):
-                users_db = load_json(USERS_FILE)
-                if st.session_state.username not in users_db:
-                    users_db[st.session_state.username] = {'predictions_count': 0, 'patients_registered': 0}
-                users_db[st.session_state.username]['patients_registered'] = users_db[st.session_state.username].get('patients_registered', 0) + 1
-                save_json(USERS_FILE, users_db)
-                
-                st.success(f"✅ Patient {patient_name} registered successfully!")
-                st.info(f"📋 Patient ID: {patient_id}")
-                st.balloons()
-                
-                if phone:
-                    send_sms(phone, patient_name, "appointment", "low")
-                if email:
-                    send_email(email, patient_name, "welcome")
-                
-                st.rerun()
             else:
-                st.error("❌ Failed to save patient. Please try again.")
+                patients = load_json(PATIENTS_FILE)
+                patient_id = f"BUD-{len(patients)+1:04d}"
+                
+                patients[patient_id] = {
+                    'patient_id': patient_id,
+                    'name': patient_name,
+                    'age': age,
+                    'gender': gender,
+                    'phone': phone,
+                    'email': email,
+                    'hiv_status': hiv_status,
+                    'tb_type': tb_type,
+                    'registration_date': str(registration_date),
+                    'registered_by': st.session_state.username,
+                    'location': {
+                        'suburb': suburb,
+                        'street_address': street_address,
+                        'latitude': None,
+                        'longitude': None
+                    },
+                    'predictions': []
+                }
+                
+                if save_json(PATIENTS_FILE, patients):
+                    users_db = load_json(USERS_FILE)
+                    if st.session_state.username not in users_db:
+                        users_db[st.session_state.username] = {'predictions_count': 0, 'patients_registered': 0}
+                    users_db[st.session_state.username]['patients_registered'] = users_db[st.session_state.username].get('patients_registered', 0) + 1
+                    save_json(USERS_FILE, users_db)
+                    
+                    st.success(f"✅ Patient {patient_name} registered successfully!")
+                    st.info(f"📋 Patient ID: {patient_id}")
+                    st.balloons()
+                    
+                    if phone:
+                        send_sms(phone, patient_name, "appointment", "low")
+                    if email:
+                        send_email(email, patient_name, "welcome")
+                    
+                    st.rerun()
+                else:
+                    st.error("❌ Failed to save patient. Please try again.")
 
 # ============================================
 # PREDICT RISK
@@ -1033,44 +1034,47 @@ def main_app():
     st.markdown("<h3 style='text-align:center;'>📋 SYSTEM DASHBOARD</h3>", unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
-    menu = "🎯 Predict Risk"
     
     with col1:
         if st.button("🎯 Predict Risk", use_container_width=True, key="menu_predict"):
-            menu = "🎯 Predict Risk"
+            st.session_state.menu = "🎯 Predict Risk"
         if st.button("📋 View Patients", use_container_width=True, key="menu_view"):
-            menu = "📋 View Patients"
+            st.session_state.menu = "📋 View Patients"
         if st.button("📊 Analytics", use_container_width=True, key="menu_analytics"):
-            menu = "📊 Analytics"
+            st.session_state.menu = "📊 Analytics"
     
     with col2:
         if st.button("📝 Register Patient", use_container_width=True, key="menu_register"):
-            menu = "📝 Register Patient"
+            st.session_state.menu = "📝 Register Patient"
         if st.button("🗺️ Patient Map", use_container_width=True, key="menu_map"):
-            menu = "🗺️ Patient Map"
+            st.session_state.menu = "🗺️ Patient Map"
         if st.button("📥 Reports", use_container_width=True, key="menu_reports"):
-            menu = "📥 Reports"
+            st.session_state.menu = "📥 Reports"
     
     with col3:
         if st.button("📅 Follow-up", use_container_width=True, key="menu_followup"):
-            menu = "📅 Follow-up"
+            st.session_state.menu = "📅 Follow-up"
         if st.button("🚨 Alerts Dashboard", use_container_width=True, key="menu_alerts"):
-            menu = "🚨 Alerts Dashboard"
+            st.session_state.menu = "🚨 Alerts Dashboard"
         if st.button("🌍 CHW Module", use_container_width=True, key="menu_chw"):
-            menu = "🌍 CHW Module"
+            st.session_state.menu = "🌍 CHW Module"
     
     with col4:
         if st.button("👨‍⚕️ Performance", use_container_width=True, key="menu_performance"):
-            menu = "👨‍⚕️ Performance"
+            st.session_state.menu = "👨‍⚕️ Performance"
         if st.button("📤 CSV Upload", use_container_width=True, key="menu_csv"):
-            menu = "📤 CSV Upload"
+            st.session_state.menu = "📤 CSV Upload"
         if st.button("📚 Education", use_container_width=True, key="menu_education"):
-            menu = "📚 Education"
+            st.session_state.menu = "📚 Education"
         if st.button("📱 Send SMS", use_container_width=True, key="menu_sendsms"):
-            menu = "📱 Send SMS"
+            st.session_state.menu = "📱 Send SMS"
     
     st.markdown("---")
     
+    # Get current menu from session state
+    menu = st.session_state.get("menu", "🎯 Predict Risk")
+    
+    # Menu routing
     if menu == "🎯 Predict Risk":
         predict_risk()
     elif menu == "📝 Register Patient":
